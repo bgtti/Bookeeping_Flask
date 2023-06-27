@@ -10,14 +10,19 @@ def create_app(config_class=Config):
     app.config.from_object(config_class)
 
     extensions.db.init_app(app)
+    extensions.flask_bcrypt.init_app(app)
+    # extensions.auth.init_app(app)  
+    extensions.jwt.init_app(app)
+    extensions.cors.init_app(app)
     # login_manager = LoginManager()
 
     from app.models import user_workspace
     # from app.error_handlers.routes import error_handler
-    from config import Config
     from flask import current_app
 
+    from app.account.routes import account
     from app.expenses.routes import expenses
+    app.register_blueprint(account, url_prefix='/api/account')
     app.register_blueprint(expenses)
 
     @app.route('/test/')

@@ -1,28 +1,33 @@
 from app.extensions import db
 from flask_login import UserMixin
 from datetime import datetime
+from uuid import uuid4
 
+
+# uuid generation
+def get_uuid():
+    return uuid4().hex
 # User and Workspace Models
 # The user who creates the Workspace is the owner
 # The owner may share the workspace with other users, giving some user access to the workspace
 
 uw_relationship = db.Table("uw_relationship",
-    db.Column('user_id', db.Integer, db.ForeignKey('users.id')),
-    db.Column('workspace_id', db.Integer, db.ForeignKey('workspaces.id'))
+    db.Column('user_id', db.Integer, db.ForeignKey('user.id')),
+    db.Column('workspace_id', db.Integer, db.ForeignKey('workspace.id'))
 )
 
-
+#add uui to user
 class User(UserMixin, db.Model):
     __tablename__ = "user"
-    id = db.Column(db.Integer, primary_key=True)
+    id = db.Column(db.Integer, primary_key=True, unique=True)
+    _uuid = db.Column(db.String(32), unique=True, default=get_uuid)
     _name = db.Column(db.String(200), nullable=False)
-    _email = db.Column(db.String(200), nullable=False, unique=True)
-    _password = db.Column(db.String(200), nullable=False)
+    _email = db.Column(db.String(345), nullable=False, unique=True)
+    _password = db.Column(db.String(70), nullable=False)
     _created_at = db.Column(db.DateTime, default=datetime.utcnow)
     owned_workspaces = db.relationship('Workspace', 
                                         backref='owner', 
-                                        cascade='all,delete', 
-                                        passive_deletes='all') #one-to-many (many workspaces can be owned by one user)
+                                        cascade='all,delete') #one-to-many (many workspaces can be owned by one user)
     accessed_workspaces = db.relationship('Workspace', 
                                             secondary=uw_relationship,
                                             backref=db.backref('users', lazy='dynamic'),
@@ -37,6 +42,10 @@ class User(UserMixin, db.Model):
     def __repr__(self):
         return f"<User: {self.id} {self._name} {self._email}>"
     
+    @property
+    def uuid(self):
+        return self._uuid
+
     @property
     def name(self):
         return self._name
