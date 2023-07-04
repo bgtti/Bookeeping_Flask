@@ -27,10 +27,11 @@ class User(UserMixin, db.Model):
     _email = db.Column(db.String(345), nullable=False, unique=True)
     _password = db.Column(db.String(70), nullable=False)
     _created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    favorite_workspace = db.relationship('Workspace', backref='users_favorite')
+    favorite_workspace = db.Column(db.Integer, db.ForeignKey('workspace.id'))
     owned_workspaces = db.relationship('Workspace', 
                                         backref='the_owner', 
-                                        cascade='all,delete') #one-to-many (many workspaces can be owned by one user)
+                                        cascade='all,delete', 
+                                        foreign_keys="Workspace.owner_id") #one-to-many (many workspaces can be owned by one user)
     accessed_workspaces = db.relationship('Workspace', 
                                             secondary=uw_relationship,
                                             backref=db.backref('users', lazy='dynamic'),
@@ -69,9 +70,9 @@ class User(UserMixin, db.Model):
     def password(self):
         return self._password
     
-    @property
-    def favorite_workspace_id(self):
-        return self._favorite_workspace_id
+    # @property
+    # def favorite_workspace(self):
+    #     return self._favorite_workspace
 
 event.listen(User, 'before_delete', User.before_delete)
 

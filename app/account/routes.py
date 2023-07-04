@@ -104,17 +104,20 @@ def login():
                 "workspace_in_question_uuid": invite._workspace_in_question.uuid,
             }
             response_data["invites"].append(invite_data)
-        # Check if user has favorite workspace
-    if user.favorite_workspace:
-        response_data["favorite_workspace"] = {
-            "uuid": user.favorite_workspace.uuid,
-            "name": user.favorite_workspace.name,
-            "currency": user.favorite_workspace.currency,
-            "abbreviation": user.favorite_workspace.abbreviation,
-        }
 
     # Check if user has workspaces
-    if user.owned_workspaces or user.accessed_workspaces:
+    if (user.owned_workspaces and user.owned_workspaces!="" and user.owned_workspaces!=None) or (user.accessed_workspaces and user.accessed_workspaces!= "" and user.accessed_workspaces!= None):
+        # Check if user has favorite workspace
+        print(f"owned: {user.owned_workspaces}")
+        print(f"shared: {user.accessed_workspaces}")
+        if user.favorite_workspace and user.favorite_workspace != "" and user.favorite_workspace !=None:
+            print(f"favorite: {user.favorite_workspace}")
+            response_data["favorite_workspace"] = {
+                "uuid": user.favorite_workspace.uuid,
+                "name": user.favorite_workspace.name,
+                "currency": user.favorite_workspace.currency,
+                "abbreviation": user.favorite_workspace.abbreviation,
+            }
         response_data["has_workspaces"] = True
         response_data["workspaces"] = []
 
