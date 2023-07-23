@@ -86,7 +86,7 @@ class Workspace(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     _uuid = db.Column(db.String(32), unique=True, default=get_uuid)
     _name = db.Column(db.String(200), nullable=False)
-    _abbreviation = db.Column(db.String(5), nullable=False, default='ABB')
+    _abbreviation = db.Column(db.String(2), nullable=False, default='AB')
     _currency = db.Column(db.String(10), default="USD")
     _created_at = db.Column(db.DateTime, default=datetime.utcnow)
     owner_id = db.Column(db.Integer, db.ForeignKey(

@@ -21,6 +21,6 @@ def create_admin_acct():
         #create admin workspace
         name = "My Admin Work Space"
         currency = "CHF"
-        super_admin_workspace = Workspace(name=name, abbreviation='ADM', currency=currency, owner_id=the_super_admin.id)
+        super_admin_workspace = Workspace(name=name, abbreviation='AD', currency=currency, owner_id=the_super_admin.id)
         db.session.add(super_admin_workspace)
         db.session.commit() 

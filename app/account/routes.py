@@ -4,6 +4,7 @@ from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identi
 from forex_python.converter import CurrencyCodes
 from app.extensions import flask_bcrypt, db
 from app.models.user_workspace import User, Workspace, Invite, INVITE_TYPES
+from app.account.helpers import get_all_user_workspaces, get_all_invites
 
 account = Blueprint('account', __name__)
 
@@ -40,27 +41,30 @@ def registerUser():
         return jsonify({'response': 'There was an error registering user', 'error': str(e)}), 500
 
     access_token = create_access_token(identity=email, expires_delta=timedelta(days=30))
+    invites_data = get_all_invites(email)
 
     response_data ={
         'response':'success', 
         'access_token':access_token,
-        'has_invites': False
+        'user': {'name': new_user.name, 'email': new_user.email},
+        'has_workspaces': False,
+        'has_invites': invites_data['has_invites'],
+        'invites': invites_data['invites'],
     }
     # Check if user has invites. If so, send to front end: 
-    invites = Invite.query.filter_by(_email_of_invited=email).all()
-    if invites:
-        response_data["has_invites"] = True
-        response_data["invites"] = []
-        for invite in invites:
-            invite_data = {
-                "_uuid": invite._uuid,
-                "_type": invite._type,
-                "user_who_sent_invite_name": invite._user_who_sent_invite.name,
-                "workspace_in_question_uuid": invite._workspace_in_question.uuid,
-            }
-            response_data["invites"].append(invite_data)
-
-    print(new_user)
+    # invites = Invite.query.filter_by(_email_of_invited=email).all()
+    # if invites:
+    #     response_data["has_invites"] = True
+    #     response_data["invites"] = []
+    #     for invite in invites:
+    #         invite_data = {
+    #             "_uuid": invite._uuid,
+    #             "_type": invite._type,
+    #             "user_who_sent_invite_name": invite._user_who_sent_invite.name,
+    #             "workspace_in_question_uuid": invite._workspace_in_question.uuid,
+    #             "workspace_in_question_name": invite._workspace_in_question.name,
+    #         }
+    #         response_data["invites"].append(invite_data)
 
     return jsonify(response_data)
 
@@ -84,88 +88,107 @@ def login():
         return jsonify({'response':'unauthorized'}), 401
     
     access_token = create_access_token(identity=email, expires_delta=timedelta(days=30))
+
+    workspaces_data = get_all_user_workspaces(email)
+    invites_data = get_all_invites(email)
+
     response_data ={
         'response':'success', 
         'access_token':access_token,
-        'has_invites': False,
-        'has_workspaces': False,
-        'favorite_workspace': None,
+        'user': {'name': user.name, 'email': user.email},
+        'has_invites': invites_data['has_invites'],
+        'invites': invites_data['invites'],
+        'has_workspaces': workspaces_data['has_workspaces'],
+        'favorite_workspace': workspaces_data['favorite_workspace'],
+        'workspaces': workspaces_data['workspaces']
     }
+
+    # response_data ={
+    #     'response':'success', 
+    #     'access_token':access_token,
+    #     'user': {'name': user.name, 'email': user.email},
+    #     'has_invites': False,
+    #     'has_workspaces': False,
+    #     'favorite_workspace': None,
+    # }
     # Check if user has invites. If so, send to front end: 
-    invites = Invite.query.filter_by(_email_of_invited=email).all()
-    if invites:
-        response_data["has_invites"] = True
-        response_data["invites"] = []
-        for invite in invites:
-            invite_data = {
-                "uuid": invite._uuid,
-                "type": invite._type,
-                "user_who_sent_invite_name": invite._user_who_sent_invite.name,
-                "workspace_in_question_uuid": invite._workspace_in_question.uuid,
-            }
-            response_data["invites"].append(invite_data)
+    # invites = Invite.query.filter_by(_email_of_invited=email).all()
+    # if invites:
+    #     response_data["has_invites"] = True
+    #     response_data["invites"] = []
+    #     for invite in invites:
+    #         invite_data = {
+    #             "uuid": invite._uuid,
+    #             "type": invite._type,
+    #             "user_who_sent_invite_name": invite._user_who_sent_invite.name,
+    #             "workspace_in_question_uuid": invite._workspace_in_question.uuid,
+    #         }
+    #         response_data["invites"].append(invite_data)
+
+    # has_owned_workspaces = db.session.query(User).filter_by(id=user.id).join(User.owned_workspaces).first() is not None
+    # has_accessed_workspaces = db.session.query(User).filter_by(id=user.id).join(User.accessed_workspaces).first() is not None
 
     # Check if user has workspaces
-    if (user.owned_workspaces and user.owned_workspaces!="" and user.owned_workspaces!=None) or (user.accessed_workspaces and user.accessed_workspaces!= "" and user.accessed_workspaces!= None):
-        # Check if user has favorite workspace
-        print(f"owned: {user.owned_workspaces}")
-        print(f"shared: {user.accessed_workspaces}")
-        if user.favorite_workspace and user.favorite_workspace != "" and user.favorite_workspace !=None:
-            print(f"favorite: {user.favorite_workspace}")
-            response_data["favorite_workspace"] = {
-                "uuid": user.favorite_workspace.uuid,
-                "name": user.favorite_workspace.name,
-                "currency": user.favorite_workspace.currency,
-                "abbreviation": user.favorite_workspace.abbreviation,
-            }
-        response_data["has_workspaces"] = True
-        response_data["workspaces"] = []
+    # if has_owned_workspaces or has_accessed_workspaces:
+    #     # Check if user has favorite workspace
+    #     # print(f"owned: {user.owned_workspaces}")
+    #     # print(f"shared: {user.accessed_workspaces}")
+    #     if user.favorite_workspace and user.favorite_workspace != "" and user.favorite_workspace !=None:
+    #         print(f"favorite: {user.favorite_workspace}")
+    #         response_data["favorite_workspace"] = {
+    #             "uuid": user.favorite_workspace.uuid,
+    #             "name": user.favorite_workspace.name,
+    #             "currency": user.favorite_workspace.currency,
+    #             "abbreviation": user.favorite_workspace.abbreviation,
+    #         }
+    #     response_data["has_workspaces"] = True
+    #     response_data["workspaces"] = []
 
-        # Add owned workspaces
-        for workspace in user.owned_workspaces:
-            workspace_data = {
-                "uuid": workspace.uuid,
-                "name": workspace.name,
-                "currency": workspace.currency,
-                "abbreviation": workspace.abbreviation,
-                "is_owner": True,
-                "users_with_access": [],
-                "num_users_with_access": 0,
-            }
+    #     # Add owned workspaces
+    #     for workspace in user.owned_workspaces:
+    #         workspace_data = {
+    #             "uuid": workspace.uuid,
+    #             "name": workspace.name,
+    #             "currency": workspace.currency,
+    #             "abbreviation": workspace.abbreviation,
+    #             "is_owner": True,
+    #             "users_with_access": [],
+    #             "num_users_with_access": 0,
+    #         }
 
-            for user_with_access in workspace.users:
-                workspace_data["users_with_access"].append({
-                    "name": user_with_access.name,
-                    "email": user_with_access.email
-                })
+    #         for user_with_access in workspace.users:
+    #             workspace_data["users_with_access"].append({
+    #                 "name": user_with_access.name,
+    #                 "email": user_with_access.email
+    #             })
 
-            workspace_data["num_users_with_access"] = len(workspace_data["users_with_access"])
-            response_data["workspaces"].append(workspace_data)
+    #         workspace_data["num_users_with_access"] = len(workspace_data["users_with_access"])
+    #         response_data["workspaces"].append(workspace_data)
 
-        # Add workspaces with access
-        for workspace in user.accessed_workspaces:
-            workspace_data = {
-                "uuid": workspace.uuid,
-                "name": workspace.name,
-                "currency": workspace.currency,
-                "abbreviation": workspace.abbreviation,
-                "is_owner": False,
-                "workspace_owner": {
-                    "name": workspace.the_owner.name,
-                    "email": workspace.the_owner.email
-                },
-                "users_with_access": [],
-                "num_users_with_access": 0,
-            }
+    #     # Add workspaces with access
+    #     for workspace in user.accessed_workspaces:
+    #         workspace_data = {
+    #             "uuid": workspace.uuid,
+    #             "name": workspace.name,
+    #             "currency": workspace.currency,
+    #             "abbreviation": workspace.abbreviation,
+    #             "is_owner": False,
+    #             "workspace_owner": {
+    #                 "name": workspace.the_owner.name,
+    #                 "email": workspace.the_owner.email
+    #             },
+    #             "users_with_access": [],
+    #             "num_users_with_access": 0,
+    #         }
 
-            for user_with_access in workspace.users:
-                workspace_data["users_with_access"].append({
-                    "name": user_with_access.name,
-                    "email": user_with_access.email
-                })
+    #         for user_with_access in workspace.users:
+    #             workspace_data["users_with_access"].append({
+    #                 "name": user_with_access.name,
+    #                 "email": user_with_access.email
+    #             })
 
-            workspace_data["num_users_with_access"] = len(workspace_data["users_with_access"])
-            response_data["workspaces"].append(workspace_data)
+    #         workspace_data["num_users_with_access"] = len(workspace_data["users_with_access"])
+    #         response_data["workspaces"].append(workspace_data)
 
     return jsonify(response_data)
 
@@ -234,7 +257,7 @@ def add_workspace():
     if not currencies.get_currency_name(currency):
         return jsonify({'response': 'Invalid currency'}), 400
     
-    if not abbreviation or abbreviation== "" or len(abbreviation) > 5:
+    if not abbreviation or abbreviation== "" or len(abbreviation) > 2:
         return jsonify({'response': 'Invalid abbreviation'}), 400
 
     # Create and add the workspace
@@ -252,8 +275,17 @@ def add_workspace():
             db.session.commit()
         except Exception as e:
             return jsonify({'response': 'Worspace added, but could not make favorite', 'error': str(e)}), 500
+        
+    workspaces_data = get_all_user_workspaces(user.email)
 
-    return jsonify({'response': 'Workspace added successfully'})
+    response_data ={
+        'response':'Workspace added successfully', 
+        'has_workspaces': workspaces_data['has_workspaces'],
+        'favorite_workspace': workspaces_data['favorite_workspace'],
+        'workspaces': workspaces_data['workspaces']
+    }
+
+    return jsonify(response_data)
 
 @account.route("/delete_workspace", methods=["POST"]) # TEST ROUTE
 @jwt_required()
@@ -324,7 +356,7 @@ def change_workspace():
     if not currencies.get_currency_name(currency):
         return jsonify({'response': 'Invalid currency'}), 400
     
-    if not abbreviation or abbreviation== "" or len(abbreviation) > 5:
+    if not abbreviation or abbreviation== "" or len(abbreviation) > 2:
         return jsonify({'response': 'Invalid abbreviation'}), 400
     
     # Check if workspace exists and if user owns workspace
@@ -475,7 +507,112 @@ def remove_access_to_workspace():
 
     return jsonify({'response': 'Access removed successfully'})
 
+#RETRIEVE WORKSPACE INFO -- adapt past login function bellow
 
+# @account.route("/login", methods=["POST"])
+# def login():
+#     # Request requirements: send email (of user), and password (of user) in the body
+#     email = request.json["email"]
+#     password = request.json["password"]
+
+#     if email == '' or email == None or len(email) > 345:
+#         return jsonify({'response':'no email'})
+#     if password == '' or password == None or len(password) > 70:
+#         return jsonify({'response':'no password'})
+    
+#     user = User.query.filter_by(_email=email).first()
+    
+#     if user is None:
+#         return jsonify({'response':'unauthorized'}), 401
+    
+#     if not flask_bcrypt.check_password_hash(user.password, password):
+#         return jsonify({'response':'unauthorized'}), 401
+    
+#     access_token = create_access_token(identity=email, expires_delta=timedelta(days=30))
+#     response_data ={
+#         'response':'success', 
+#         'access_token':access_token,
+#         'has_invites': False,
+#         'has_workspaces': False,
+#         'favorite_workspace': None,
+#     }
+#     # Check if user has invites. If so, send to front end: 
+#     invites = Invite.query.filter_by(_email_of_invited=email).all()
+#     if invites:
+#         response_data["has_invites"] = True
+#         response_data["invites"] = []
+#         for invite in invites:
+#             invite_data = {
+#                 "uuid": invite._uuid,
+#                 "type": invite._type,
+#                 "user_who_sent_invite_name": invite._user_who_sent_invite.name,
+#                 "workspace_in_question_uuid": invite._workspace_in_question.uuid,
+#             }
+#             response_data["invites"].append(invite_data)
+
+#     # Check if user has workspaces
+#     if (user.owned_workspaces and user.owned_workspaces!="" and user.owned_workspaces!=None) or (user.accessed_workspaces and user.accessed_workspaces!= "" and user.accessed_workspaces!= None):
+#         # Check if user has favorite workspace
+#         print(f"owned: {user.owned_workspaces}")
+#         print(f"shared: {user.accessed_workspaces}")
+#         if user.favorite_workspace and user.favorite_workspace != "" and user.favorite_workspace !=None:
+#             print(f"favorite: {user.favorite_workspace}")
+#             response_data["favorite_workspace"] = {
+#                 "uuid": user.favorite_workspace.uuid,
+#                 "name": user.favorite_workspace.name,
+#                 "currency": user.favorite_workspace.currency,
+#                 "abbreviation": user.favorite_workspace.abbreviation,
+#             }
+#         response_data["has_workspaces"] = True
+#         response_data["workspaces"] = []
+
+#         # Add owned workspaces
+#         for workspace in user.owned_workspaces:
+#             workspace_data = {
+#                 "uuid": workspace.uuid,
+#                 "name": workspace.name,
+#                 "currency": workspace.currency,
+#                 "abbreviation": workspace.abbreviation,
+#                 "is_owner": True,
+#                 "users_with_access": [],
+#                 "num_users_with_access": 0,
+#             }
+
+#             for user_with_access in workspace.users:
+#                 workspace_data["users_with_access"].append({
+#                     "name": user_with_access.name,
+#                     "email": user_with_access.email
+#                 })
+
+#             workspace_data["num_users_with_access"] = len(workspace_data["users_with_access"])
+#             response_data["workspaces"].append(workspace_data)
+
+#         # Add workspaces with access
+#         for workspace in user.accessed_workspaces:
+#             workspace_data = {
+#                 "uuid": workspace.uuid,
+#                 "name": workspace.name,
+#                 "currency": workspace.currency,
+#                 "abbreviation": workspace.abbreviation,
+#                 "is_owner": False,
+#                 "workspace_owner": {
+#                     "name": workspace.the_owner.name,
+#                     "email": workspace.the_owner.email
+#                 },
+#                 "users_with_access": [],
+#                 "num_users_with_access": 0,
+#             }
+
+#             for user_with_access in workspace.users:
+#                 workspace_data["users_with_access"].append({
+#                     "name": user_with_access.name,
+#                     "email": user_with_access.email
+#                 })
+
+#             workspace_data["num_users_with_access"] = len(workspace_data["users_with_access"])
+#             response_data["workspaces"].append(workspace_data)
+
+#     return jsonify(response_data)
 
 # The following account-related implementations are missing: reset password and change email.
 # Also, sending email functionality in some functions (marked in capital-letter comments)
