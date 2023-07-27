@@ -1,5 +1,6 @@
 from app.models.user_workspace import User, Workspace, Invite, INVITE_TYPES
 from app.extensions import db
+from app.data.currency_list import currency_list
 
 def get_all_user_workspaces(email):
     """
@@ -101,3 +102,10 @@ def get_all_invites(email):
             all_invites_data["invites"].append(invite_data)
 
     return all_invites_data
+
+def checkIfCurrencyInList(currency):
+    for currency_info in currency_list:
+        if currency_info["code"] == currency:
+            return True
+
+    return False

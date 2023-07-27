@@ -1,10 +1,10 @@
 from flask import Blueprint, request, jsonify
 from datetime import timedelta
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
-from forex_python.converter import CurrencyCodes
+# from forex_python.converter import CurrencyCodes
 from app.extensions import flask_bcrypt, db
 from app.models.user_workspace import User, Workspace, Invite, INVITE_TYPES
-from app.account.helpers import get_all_user_workspaces, get_all_invites
+from app.account.helpers import get_all_user_workspaces, get_all_invites, checkIfCurrencyInList
 
 account = Blueprint('account', __name__)
 
@@ -248,14 +248,17 @@ def add_workspace():
     name = request.json.get("name")
     currency = request.json.get("currency")
     abbreviation = request.json.get("abbreviation")
-    is_favorite = request.json.get("is_primary")
+    is_favorite = "False" # when accepting is_favorite: request.json.get("is_primary")
 
     if not name or name == "" or len(name) > 200:
         return jsonify({'response': 'Invalid name'}), 400
     
-    currencies = CurrencyCodes()
-    if not currencies.get_currency_name(currency):
+    valid_currency = checkIfCurrencyInList(currency)
+    if valid_currency == False:
         return jsonify({'response': 'Invalid currency'}), 400
+    # currencies = CurrencyCodes()
+    # if not currencies.get_currency_name(currency):
+    #     return jsonify({'response': 'Invalid currency'}), 400
     
     if not abbreviation or abbreviation== "" or len(abbreviation) > 2:
         return jsonify({'response': 'Invalid abbreviation'}), 400
@@ -352,8 +355,11 @@ def change_workspace():
     if not name or name== "" or len(name) > 200:
         return jsonify({'response': 'Invalid name'}), 400
     
-    currencies = CurrencyCodes()
-    if not currencies.get_currency_name(currency):
+    # currencies = CurrencyCodes()
+    # if not currencies.get_currency_name(currency):
+    #     return jsonify({'response': 'Invalid currency'}), 400
+    valid_currency = checkIfCurrencyInList(currency)
+    if valid_currency == False:
         return jsonify({'response': 'Invalid currency'}), 400
     
     if not abbreviation or abbreviation== "" or len(abbreviation) > 2:
