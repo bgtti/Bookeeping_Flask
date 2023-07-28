@@ -85,17 +85,18 @@ class Workspace(UserMixin, db.Model):
     __tablename__ = "workspace"
     id = db.Column(db.Integer, primary_key=True)
     _uuid = db.Column(db.String(32), unique=True, default=get_uuid)
-    _name = db.Column(db.String(200), nullable=False)
+    _name = db.Column(db.String(50), nullable=False)
     _abbreviation = db.Column(db.String(2), nullable=False, default='AB')
     _currency = db.Column(db.String(10), default="USD")
     _created_at = db.Column(db.DateTime, default=datetime.utcnow)
     owner_id = db.Column(db.Integer, db.ForeignKey(
         'user.id', ondelete='CASCADE'))
 
-    def __init__(self, name, abbreviation, owner_id, ** kwargs):
+    def __init__(self, name, abbreviation, currency, owner_id, ** kwargs):
         self._name = name
         self._abbreviation = abbreviation
         self._created_at = datetime.utcnow()
+        self._currency = currency
         self.owner_id = owner_id
 
     def __repr__(self):
@@ -117,6 +118,17 @@ class Workspace(UserMixin, db.Model):
     def currency(self):
         return self._currency
     
+    @name.setter
+    def name(self, value):
+        self._name = value
+    
+    @abbreviation.setter
+    def abbreviation(self, value):
+        self._abbreviation = value
+    
+    @currency.setter
+    def currency(self, value):
+        self._currency = value
 
 # many-to-many relationship add:
 # userX.workspaces.append(workspaceY)

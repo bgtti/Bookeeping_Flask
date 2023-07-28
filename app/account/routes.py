@@ -51,21 +51,6 @@ def registerUser():
         'has_invites': invites_data['has_invites'],
         'invites': invites_data['invites'],
     }
-    # Check if user has invites. If so, send to front end: 
-    # invites = Invite.query.filter_by(_email_of_invited=email).all()
-    # if invites:
-    #     response_data["has_invites"] = True
-    #     response_data["invites"] = []
-    #     for invite in invites:
-    #         invite_data = {
-    #             "_uuid": invite._uuid,
-    #             "_type": invite._type,
-    #             "user_who_sent_invite_name": invite._user_who_sent_invite.name,
-    #             "workspace_in_question_uuid": invite._workspace_in_question.uuid,
-    #             "workspace_in_question_name": invite._workspace_in_question.name,
-    #         }
-    #         response_data["invites"].append(invite_data)
-
     return jsonify(response_data)
 
 @account.route("/login", methods=["POST"])
@@ -102,93 +87,6 @@ def login():
         'favorite_workspace': workspaces_data['favorite_workspace'],
         'workspaces': workspaces_data['workspaces']
     }
-
-    # response_data ={
-    #     'response':'success', 
-    #     'access_token':access_token,
-    #     'user': {'name': user.name, 'email': user.email},
-    #     'has_invites': False,
-    #     'has_workspaces': False,
-    #     'favorite_workspace': None,
-    # }
-    # Check if user has invites. If so, send to front end: 
-    # invites = Invite.query.filter_by(_email_of_invited=email).all()
-    # if invites:
-    #     response_data["has_invites"] = True
-    #     response_data["invites"] = []
-    #     for invite in invites:
-    #         invite_data = {
-    #             "uuid": invite._uuid,
-    #             "type": invite._type,
-    #             "user_who_sent_invite_name": invite._user_who_sent_invite.name,
-    #             "workspace_in_question_uuid": invite._workspace_in_question.uuid,
-    #         }
-    #         response_data["invites"].append(invite_data)
-
-    # has_owned_workspaces = db.session.query(User).filter_by(id=user.id).join(User.owned_workspaces).first() is not None
-    # has_accessed_workspaces = db.session.query(User).filter_by(id=user.id).join(User.accessed_workspaces).first() is not None
-
-    # Check if user has workspaces
-    # if has_owned_workspaces or has_accessed_workspaces:
-    #     # Check if user has favorite workspace
-    #     # print(f"owned: {user.owned_workspaces}")
-    #     # print(f"shared: {user.accessed_workspaces}")
-    #     if user.favorite_workspace and user.favorite_workspace != "" and user.favorite_workspace !=None:
-    #         print(f"favorite: {user.favorite_workspace}")
-    #         response_data["favorite_workspace"] = {
-    #             "uuid": user.favorite_workspace.uuid,
-    #             "name": user.favorite_workspace.name,
-    #             "currency": user.favorite_workspace.currency,
-    #             "abbreviation": user.favorite_workspace.abbreviation,
-    #         }
-    #     response_data["has_workspaces"] = True
-    #     response_data["workspaces"] = []
-
-    #     # Add owned workspaces
-    #     for workspace in user.owned_workspaces:
-    #         workspace_data = {
-    #             "uuid": workspace.uuid,
-    #             "name": workspace.name,
-    #             "currency": workspace.currency,
-    #             "abbreviation": workspace.abbreviation,
-    #             "is_owner": True,
-    #             "users_with_access": [],
-    #             "num_users_with_access": 0,
-    #         }
-
-    #         for user_with_access in workspace.users:
-    #             workspace_data["users_with_access"].append({
-    #                 "name": user_with_access.name,
-    #                 "email": user_with_access.email
-    #             })
-
-    #         workspace_data["num_users_with_access"] = len(workspace_data["users_with_access"])
-    #         response_data["workspaces"].append(workspace_data)
-
-    #     # Add workspaces with access
-    #     for workspace in user.accessed_workspaces:
-    #         workspace_data = {
-    #             "uuid": workspace.uuid,
-    #             "name": workspace.name,
-    #             "currency": workspace.currency,
-    #             "abbreviation": workspace.abbreviation,
-    #             "is_owner": False,
-    #             "workspace_owner": {
-    #                 "name": workspace.the_owner.name,
-    #                 "email": workspace.the_owner.email
-    #             },
-    #             "users_with_access": [],
-    #             "num_users_with_access": 0,
-    #         }
-
-    #         for user_with_access in workspace.users:
-    #             workspace_data["users_with_access"].append({
-    #                 "name": user_with_access.name,
-    #                 "email": user_with_access.email
-    #             })
-
-    #         workspace_data["num_users_with_access"] = len(workspace_data["users_with_access"])
-    #         response_data["workspaces"].append(workspace_data)
 
     return jsonify(response_data)
 
@@ -250,7 +148,7 @@ def add_workspace():
     abbreviation = request.json.get("abbreviation")
     is_favorite = "False" # when accepting is_favorite: request.json.get("is_primary")
 
-    if not name or name == "" or len(name) > 200:
+    if not name or name == "" or len(name) > 50:
         return jsonify({'response': 'Invalid name'}), 400
     
     valid_currency = checkIfCurrencyInList(currency)
@@ -310,12 +208,12 @@ def delete_workspace():
     if workspace.owner_id != user.id:
         return jsonify({'response': 'You are not the owner of this workspace'}), 403
 
-    if user.favorite_workspace_id == workspace.id:
-        try:
-            user.favorite_workspace_id = None
-            db.session.commit()
-        except Exception as e:
-            return jsonify({'response': 'Could not delete workspace from favorite', 'error': str(e)}), 500
+    # if user.favorite_workspace_id == workspace.id:
+    #     try:
+    #         user.favorite_workspace_id = None
+    #         db.session.commit()
+    #     except Exception as e:
+    #         return jsonify({'response': 'Could not delete workspace from favorite', 'error': str(e)}), 500
         
     # Check if there are users with access to this workspace and remove access
     users_with_access = workspace.users.all()
@@ -336,11 +234,19 @@ def delete_workspace():
     except Exception as e:
         return jsonify({'response': 'There was an error deleting workspace', 'error': str(e)}), 500
 
-    return jsonify({'response': 'Workspace deleted successfully'})
+    workspaces_data = get_all_user_workspaces(user.email)
 
-@account.route("/change_workspace", methods=["POST"])# TEST ROUTE
+    response_data ={
+        'response':'Workspace deleted successfully', 
+        'has_workspaces': workspaces_data['has_workspaces'],
+        'favorite_workspace': workspaces_data['favorite_workspace'],
+        'workspaces': workspaces_data['workspaces']
+    } 
+    return jsonify(workspaces_data)
+
+@account.route("/edit_workspace", methods=["POST"])# TEST ROUTE
 @jwt_required()  
-def change_workspace():
+def edit_workspace():
     # Request requirements: 'Bearer token' in request header and the following in the body:
     # name (of workspace), currency (of workspace), abbreviation, and workspace_uuid
     current_user_email = get_jwt_identity()
@@ -355,9 +261,6 @@ def change_workspace():
     if not name or name== "" or len(name) > 200:
         return jsonify({'response': 'Invalid name'}), 400
     
-    # currencies = CurrencyCodes()
-    # if not currencies.get_currency_name(currency):
-    #     return jsonify({'response': 'Invalid currency'}), 400
     valid_currency = checkIfCurrencyInList(currency)
     if valid_currency == False:
         return jsonify({'response': 'Invalid currency'}), 400
@@ -383,9 +286,17 @@ def change_workspace():
     try:
         db.session.commit()
     except Exception as e:
-        return jsonify({'response': 'There was an error changing the workspace', 'error': str(e)}), 500
+        return jsonify({'response': 'There was an error editting the workspace', 'error': str(e)}), 500
 
-    return jsonify({'response': 'Workspace added successfully'})
+    workspaces_data = get_all_user_workspaces(user.email)
+
+    response_data ={
+        'response':'Workspace editted successfully', 
+        'has_workspaces': workspaces_data['has_workspaces'],
+        'favorite_workspace': workspaces_data['favorite_workspace'],
+        'workspaces': workspaces_data['workspaces']
+    }
+    return jsonify(response_data)
 
 @account.route("/make_workspace_favorite", methods=["POST"])# TEST ROUTE
 @jwt_required()  
