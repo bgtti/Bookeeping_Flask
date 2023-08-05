@@ -3,7 +3,8 @@ from datetime import timedelta
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 # from forex_python.converter import CurrencyCodes
 from app.extensions import flask_bcrypt, db
-from app.models.user_workspace import User, Workspace, Invite, INVITE_TYPES
+from app.models.user_workspace import User, Workspace
+from app.models.invite import Invite, INVITE_TYPES
 from app.account.helpers import get_all_user_workspaces, get_all_invites, checkIfCurrencyInList
 
 account = Blueprint('account', __name__)
@@ -11,6 +12,9 @@ account = Blueprint('account', __name__)
 CHARACTERS_NOT_ALLOWED_IN_EMAIL = ["<",">","/","\\", "--"]
 
 # In this file: routes concerning signup, login, account management and workspace management
+
+# TO-DO: favorite workspace & routes related to sharing a workspace have not been tested
+# this is to be implemented after other features
 
 @account.route("/register", methods=["POST"])
 def registerUser():
@@ -129,7 +133,7 @@ def change_user():
 
     return jsonify({'response': 'User changed successfully'})
 
-@account.route("/add_workspace", methods=["POST"])# TEST ROUTE
+@account.route("/add_workspace", methods=["POST"])
 @jwt_required() 
 def add_workspace():
     # Request requirements: 'Bearer token' in request header and add in body:
@@ -188,7 +192,7 @@ def add_workspace():
 
     return jsonify(response_data)
 
-@account.route("/delete_workspace", methods=["POST"]) # TEST ROUTE
+@account.route("/delete_workspace", methods=["POST"])
 @jwt_required()
 def delete_workspace():
     # Request requirements: 'Bearer token' in request header and the following in the body:
@@ -244,7 +248,7 @@ def delete_workspace():
     } 
     return jsonify(workspaces_data)
 
-@account.route("/edit_workspace", methods=["POST"])# TEST ROUTE
+@account.route("/edit_workspace", methods=["POST"])
 @jwt_required()  
 def edit_workspace():
     # Request requirements: 'Bearer token' in request header and the following in the body:
@@ -298,6 +302,7 @@ def edit_workspace():
     }
     return jsonify(response_data)
 
+#THE FOLLOWING ROUTE HAS NOT BEEN TESTED NOR IMPLEMENTED IN FE
 @account.route("/make_workspace_favorite", methods=["POST"])# TEST ROUTE
 @jwt_required()  
 def make_workspace_favorite():
@@ -327,7 +332,9 @@ def make_workspace_favorite():
 
     return jsonify({'response': 'Workspace marked as favorite successfully'})
 
-@account.route("/new_invite", methods=["POST"]) # TEST ROUTE
+
+#THE FOLLOWING ROUTE HAS NOT BEEN TESTED NOR IMPLEMENTED IN FE
+@account.route("/new_invite", methods=["POST"])
 @jwt_required()
 def workspace_invite():
     # Request requirements: 'Bearer token' in request header and the following in the body:
@@ -387,7 +394,8 @@ def workspace_invite():
 
     return jsonify({'response': 'Invite sent successfully'})
 
-@account.route("/remove_access_to_workspace", methods=["POST"]) # TEST ROUTE
+#THE FOLLOWING ROUTE HAS NOT BEEN TESTED NOR IMPLEMENTED IN FE
+@account.route("/remove_access_to_workspace", methods=["POST"]) 
 @jwt_required()
 def remove_access_to_workspace():
     # Request requirements: 'Bearer token' in request header and the following in the body:
@@ -424,112 +432,6 @@ def remove_access_to_workspace():
 
     return jsonify({'response': 'Access removed successfully'})
 
-#RETRIEVE WORKSPACE INFO -- adapt past login function bellow
-
-# @account.route("/login", methods=["POST"])
-# def login():
-#     # Request requirements: send email (of user), and password (of user) in the body
-#     email = request.json["email"]
-#     password = request.json["password"]
-
-#     if email == '' or email == None or len(email) > 345:
-#         return jsonify({'response':'no email'})
-#     if password == '' or password == None or len(password) > 70:
-#         return jsonify({'response':'no password'})
-    
-#     user = User.query.filter_by(_email=email).first()
-    
-#     if user is None:
-#         return jsonify({'response':'unauthorized'}), 401
-    
-#     if not flask_bcrypt.check_password_hash(user.password, password):
-#         return jsonify({'response':'unauthorized'}), 401
-    
-#     access_token = create_access_token(identity=email, expires_delta=timedelta(days=30))
-#     response_data ={
-#         'response':'success', 
-#         'access_token':access_token,
-#         'has_invites': False,
-#         'has_workspaces': False,
-#         'favorite_workspace': None,
-#     }
-#     # Check if user has invites. If so, send to front end: 
-#     invites = Invite.query.filter_by(_email_of_invited=email).all()
-#     if invites:
-#         response_data["has_invites"] = True
-#         response_data["invites"] = []
-#         for invite in invites:
-#             invite_data = {
-#                 "uuid": invite._uuid,
-#                 "type": invite._type,
-#                 "user_who_sent_invite_name": invite._user_who_sent_invite.name,
-#                 "workspace_in_question_uuid": invite._workspace_in_question.uuid,
-#             }
-#             response_data["invites"].append(invite_data)
-
-#     # Check if user has workspaces
-#     if (user.owned_workspaces and user.owned_workspaces!="" and user.owned_workspaces!=None) or (user.accessed_workspaces and user.accessed_workspaces!= "" and user.accessed_workspaces!= None):
-#         # Check if user has favorite workspace
-#         print(f"owned: {user.owned_workspaces}")
-#         print(f"shared: {user.accessed_workspaces}")
-#         if user.favorite_workspace and user.favorite_workspace != "" and user.favorite_workspace !=None:
-#             print(f"favorite: {user.favorite_workspace}")
-#             response_data["favorite_workspace"] = {
-#                 "uuid": user.favorite_workspace.uuid,
-#                 "name": user.favorite_workspace.name,
-#                 "currency": user.favorite_workspace.currency,
-#                 "abbreviation": user.favorite_workspace.abbreviation,
-#             }
-#         response_data["has_workspaces"] = True
-#         response_data["workspaces"] = []
-
-#         # Add owned workspaces
-#         for workspace in user.owned_workspaces:
-#             workspace_data = {
-#                 "uuid": workspace.uuid,
-#                 "name": workspace.name,
-#                 "currency": workspace.currency,
-#                 "abbreviation": workspace.abbreviation,
-#                 "is_owner": True,
-#                 "users_with_access": [],
-#                 "num_users_with_access": 0,
-#             }
-
-#             for user_with_access in workspace.users:
-#                 workspace_data["users_with_access"].append({
-#                     "name": user_with_access.name,
-#                     "email": user_with_access.email
-#                 })
-
-#             workspace_data["num_users_with_access"] = len(workspace_data["users_with_access"])
-#             response_data["workspaces"].append(workspace_data)
-
-#         # Add workspaces with access
-#         for workspace in user.accessed_workspaces:
-#             workspace_data = {
-#                 "uuid": workspace.uuid,
-#                 "name": workspace.name,
-#                 "currency": workspace.currency,
-#                 "abbreviation": workspace.abbreviation,
-#                 "is_owner": False,
-#                 "workspace_owner": {
-#                     "name": workspace.the_owner.name,
-#                     "email": workspace.the_owner.email
-#                 },
-#                 "users_with_access": [],
-#                 "num_users_with_access": 0,
-#             }
-
-#             for user_with_access in workspace.users:
-#                 workspace_data["users_with_access"].append({
-#                     "name": user_with_access.name,
-#                     "email": user_with_access.email
-#                 })
-
-#             workspace_data["num_users_with_access"] = len(workspace_data["users_with_access"])
-#             response_data["workspaces"].append(workspace_data)
-
-#     return jsonify(response_data)
 
 # The following account-related implementations are missing: reset password and change email.
 # Also, sending email functionality in some functions (marked in capital-letter comments)
