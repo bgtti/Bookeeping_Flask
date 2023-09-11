@@ -17,7 +17,7 @@ CHARACTERS_NOT_ALLOWED_IN_EMAIL = ["<",">","/","\\", "--"]
 # this is to be implemented after other features
 
 @account.route("/register", methods=["POST"])
-def registerUser():
+def register_user():
     # Request requirements: send email (of user), name (of user), and password (of user) in the body
     name = request.json["name"]
     email = request.json["email"]
@@ -91,6 +91,7 @@ def login():
         'favorite_workspace': workspaces_data['favorite_workspace'],
         'workspaces': workspaces_data['workspaces']
     }
+
 
     return jsonify(response_data)
 

@@ -20,6 +20,8 @@ uw_relationship = db.Table("uw_relationship",
 )
 
 # note that before user is deleted, all owned workspaces will be deleted.
+# owned_workspaces are those the user has created him/herself
+# accessed_workspaces are those owned by others and shared with the user, so the user has access to them
 class User(UserMixin, db.Model):
     __tablename__ = "user"
     id = db.Column(db.Integer, primary_key=True, unique=True)

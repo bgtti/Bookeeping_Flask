@@ -11,6 +11,8 @@ def get_uuid():
     return uuid4().hex
 
 # Models belonging to Workspaces: Group, Account
+
+# One workspace can have many groups. A group belongs to one workspace.
 class Group(UserMixin, db.Model):
     __tablename__ = "group"
     id = db.Column(db.Integer, primary_key=True)
@@ -46,6 +48,7 @@ class Group(UserMixin, db.Model):
     def  workspace_id(self):
         return self._workspace_id
 
+# One workspace can have many acconts. An account belongs to one workspace.
 class Account(UserMixin, db.Model):
     __tablename__ = "account"
     id = db.Column(db.Integer, primary_key=True)
