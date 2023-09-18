@@ -22,7 +22,9 @@ def create_app(config_class=Config):
 
     from app.account.routes import account
     from app.expenses.routes import expenses
+    from app.workspace_settings.routes import workspace_settings
     app.register_blueprint(account, url_prefix='/api/account')
+    app.register_blueprint(workspace_settings, url_prefix='/api/workspace_settings')
     app.register_blueprint(expenses)
 
     @app.route('/test/')

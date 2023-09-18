@@ -15,6 +15,7 @@ def get_uuid():
 # The owner may share the workspace with other users, giving some user access to the workspace
 
 uw_relationship = db.Table("uw_relationship",
+    db.Column('id', db.Integer, primary_key=True),  
     db.Column('user_id', db.Integer, db.ForeignKey('user.id')),
     db.Column('workspace_id', db.Integer, db.ForeignKey('workspace.id'))
 )

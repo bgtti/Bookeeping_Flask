@@ -19,7 +19,7 @@ class Group(UserMixin, db.Model):
     _uuid = db.Column(db.String(32), unique=True, default=get_uuid)
     _name = db.Column(db.String(30), nullable=False)
     _description = db.Column(db.String(100), nullable=True)
-    _code = db.Column(db.String(10), nullable=True, default="00")
+    _code = db.Column(db.String(10), nullable=True)
     _workspace_id = db.Column(db.Integer, db.ForeignKey('workspace.id'))
 
     def __init__(self, name, description, code, workspace_id, ** kwargs):

@@ -6,64 +6,16 @@ import jsonschema
 from app.extensions import flask_bcrypt, db
 from app.models.user_workspace import User, Workspace
 from app.models.workspace_settings_general import Group, Account
-from schemas import general_json_schema
+from app.workspace_settings.schemas import add_group_schema, edit_group_schema, delete_group_schema
+from app.workspace_settings.helpers import get_all_groups
 
 workspace_settings = Blueprint('workspace_settings', __name__)
 
-# IN THIS FILE: routes used to set, modify and delete Workspace Settings
+# IN THIS FILE: routes used to set, modify and delete objects in Workspace Settings
 
 CHARACTERS_NOT_ALLOWED = ["<",">","/","\\", "--"]
 
 # General settings: Group and Account
-
-# @workspace_settings.route("/add_group", methods=["POST"])# TEST ROUTE
-# @jwt_required()  
-# def add_group():
-#     # Request requirements: 'Bearer token' in request header and the following in the body:
-#     # workspace_uuid, name, description, code
-#     current_user_email = get_jwt_identity()
-#     user = User.query.filter_by(_email=current_user_email).first()
-#     if not user:
-#         return jsonify({'response': 'User not found'}), 404
-    
-#     # Check if workspace exists and if user is either owner or has access to it
-#     workspace_uuid = request.json.get("workspace_uuid")
-#     workspace = Workspace.query.filter_by(_uuid=workspace_uuid).first()
-
-#     if not workspace:
-#         return jsonify({'response': 'Workspace not found'}), 404
-
-#     if workspace.owner_id != user.id or not workspace.users.filter_by(id=user.id).first():
-#         return jsonify({'response': 'You do not have access to this workspace'}), 403
-    
-#     # Check if Group information is correct
-#     name = request.json.get("name")
-
-#     if name == '' or name == None or len(name) > 30 or any(char in name for char in CHARACTERS_NOT_ALLOWED):
-#         return jsonify({'response':'no name or name not valid'}, 400)
-    
-#     description = request.json.get("description")
-
-#     if description and description != None and description != "":
-#         if  len(description) > 100 or any(char in description for char in CHARACTERS_NOT_ALLOWED):
-#             return jsonify({'response':'description not valid'}, 400)
-
-#     code = request.json.get("code")
-
-#     if code and code != None and code != "":
-#         if  len(code) > 10 or any(char in code for char in CHARACTERS_NOT_ALLOWED):
-#             return jsonify({'response':'code not valid'}, 400)
-
-#     # Sve group
-#     try:
-#         new_group = Group(name=name, description=description, code=code, workspace_id=workspace.id)
-#         db.session.add(new_group)
-#         db.session.commit()
-#     except Exception as e:
-#         return jsonify({'response': 'There was an error adding group', 'error': str(e)}), 500
-
-#     print("group success")
-#     return jsonify({'response': 'Group added successfully'})
 
 @workspace_settings.route("/add_group", methods=["POST"])
 @jwt_required()
@@ -73,13 +25,11 @@ def add_group():
 
     # Validate the JSON data against the schema
     try:
-        jsonschema.validate(instance=json_data, schema=general_json_schema)
+        jsonschema.validate(instance=json_data, schema=add_group_schema)
     except jsonschema.exceptions.ValidationError as e:
-        # Handle validation errors
-        return jsonify({'response': 'Invalid JSON data', 'error': str(e)}), 400
+        return jsonify({'response': 'Invalid JSON data.', 'error': str(e)}), 400
 
-    # Request requirements: 'Bearer token' in request header and the following in the body:
-    # workspace_uuid, name, description, code
+    # Validate user and token
     current_user_email = get_jwt_identity()
     user = User.query.filter_by(_email=current_user_email).first()
     if not user:
@@ -88,12 +38,10 @@ def add_group():
     # Check if workspace exists and if user is either owner or has access to it
     workspace_uuid = json_data.get("workspace_uuid")
     workspace = Workspace.query.filter_by(_uuid=workspace_uuid).first()
-
     if not workspace:
-        return jsonify({'response': 'Workspace not found'}), 404
-
-    if workspace.owner_id != user.id or not workspace.users.filter_by(id=user.id).first():
-        return jsonify({'response': 'You do not have access to this workspace'}), 403
+        return jsonify({'response': 'Workspace not found.'}), 404
+    if workspace.owner_id != user.id or workspace.users.filter_by(id=user.id).first() is not None:
+        return jsonify({'response': 'You do not have access to this workspace.'}), 403
 
     # Save group
     try:
@@ -101,7 +49,108 @@ def add_group():
         db.session.add(new_group)
         db.session.commit()
     except Exception as e:
+        db.session.rollback()
         return jsonify({'response': 'There was an error adding group', 'error': str(e)}), 500
+    
+    # Get all groups belonging to this WS
+    try:
+        group_data = get_all_groups(workspace.id)
+    except Exception as e:
+        return jsonify({'response': 'Group added, but database error prevented group data to be sent.', 'error': str(e)}), 500
 
-    print("group success")
-    return jsonify({'response': 'Group added successfully'})
+    return jsonify(group_data)
+
+@workspace_settings.route("/edit_group", methods=["POST"])
+@jwt_required()
+def edit_group():
+    # Get the JSON data from the request body
+    json_data = request.get_json()
+
+    # Validate the JSON data against the schema
+    try:
+        jsonschema.validate(instance=json_data, schema=edit_group_schema)
+    except jsonschema.exceptions.ValidationError as e:
+        return jsonify({'response': 'Invalid JSON data.', 'error': str(e)}), 400
+
+    # Validate user and token
+    current_user_email = get_jwt_identity()
+    user = User.query.filter_by(_email=current_user_email).first()
+    if not user:
+        return jsonify({'response': 'User not found'}), 404
+    
+    # Check if group exists and if user is either owner or has access to it
+    group_uuid = json_data["group_uuid"]
+    group = Group.query.filter_by(_uuid=group_uuid).first()
+    if not group:
+        return jsonify({'response': 'Group not found.'}), 404
+    if group.workspace.owner_id != user.id or group.workspace.users.filter_by(id=user.id).first() is not None:
+        return jsonify({'response': 'You do not have access to this group.'}), 403
+
+    # Save group
+    # Update group information
+    try:
+        if "name" in json_data:
+            group._name = json_data["name"]
+        if "description" in json_data:
+            group._description = json_data["description"]
+        if "code" in json_data:
+            group._code = json_data["code"]
+        
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'response': 'There was an error editing the group', 'error': str(e)}), 500
+    
+    # Get all groups belonging to this WS
+    try:
+        group_data = get_all_groups(group.workspace.id)
+        
+    except Exception as e:
+        return jsonify({'response': 'Group added, but database error prevented group data to be sent.', 'error': str(e)}), 500
+
+    return jsonify(group_data)
+
+@workspace_settings.route("/delete_group", methods=["DELETE"])
+@jwt_required()
+def delete_group():
+    # Get the JSON data from the request body
+    json_data = request.get_json()
+
+    # Validate the JSON data against the schema
+    try:
+        jsonschema.validate(instance=json_data, schema=delete_group_schema)
+    except jsonschema.exceptions.ValidationError as e:
+        return jsonify({'response': 'Invalid JSON data.', 'error': str(e)}), 400
+
+    # Validate user and token
+    current_user_email = get_jwt_identity()
+    user = User.query.filter_by(_email=current_user_email).first()
+    if not user:
+        return jsonify({'response': 'User not found'}), 404
+
+    group_uuid = json_data["group_uuid"]
+
+    # Check if group exists and if user is either the owner or has access to it
+    group = Group.query.filter_by(_uuid=group_uuid).first()
+    if not group:
+        return jsonify({'response': 'Group not found.'}), 404
+
+    # Check if the user is the owner of the workspace that contains the group
+    if group.workspace.owner_id != user.id:
+        return jsonify({'response': 'You do not have permission to delete this group.'}), 403
+
+    try:
+        # Delete the group
+        db.session.delete(group)
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'response': 'There was an error deleting the group', 'error': str(e)}), 500
+
+    # Get all groups belonging to the workspace after deletion
+    try:
+        group_data = get_all_groups(group.workspace.id)
+    except Exception as e:
+        return jsonify({'response': 'Group deleted, but database error prevented group data from being sent.', 'error': str(e)}), 500
+
+    return jsonify(group_data)
