@@ -25,3 +25,27 @@ def get_all_groups(workspace_id):
         group_data.append(group_info)
     
     return group_data
+
+# "accounts" bellow refer to the objects belonging to the workspace, not the user's accounts
+def get_all_accounts(workspace_id):
+    '''Requires workspace id and outputs array of all account objects belonging to workspace.'''
+
+    workspace = Workspace.query.filter_by(id=workspace_id).first()
+
+    if not workspace:
+        return "Error: workspace could not be found."
+    
+    accounts = workspace.accounts
+
+    # Create a list of account data to return
+    account_data = []
+    for account in accounts:
+        account_info = {
+            "uuid": account.uuid,
+            "name": account.name,
+            "description": account.description,
+            "code": account.code,
+        }
+        account_data.append(account_info)
+    
+    return account_data
