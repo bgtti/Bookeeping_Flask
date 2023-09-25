@@ -16,7 +16,7 @@ def create_app(config_class=Config):
     extensions.cors.init_app(app)
     # login_manager = LoginManager()
 
-    from app.models import user_workspace
+    from app.models import user_and_workspace
     # from app.error_handlers.routes import error_handler
     from flask import current_app
 

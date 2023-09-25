@@ -1,4 +1,4 @@
-from app.models.user_workspace import User, Workspace
+from app.models.user_and_workspace import User, Workspace
 from app.models.invite import Invite, INVITE_TYPES
 from app.extensions import db
 from app.data.currency_list import currency_list

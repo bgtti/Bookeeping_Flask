@@ -4,8 +4,9 @@ from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identi
 import jsonschema
 # from forex_python.converter import CurrencyCodes
 from app.extensions import flask_bcrypt, db
-from app.models.user_workspace import User, Workspace
-from app.models.workspace_settings_general import Group, Account
+from app.models.user_and_workspace import User, Workspace
+from app.models.workspace_group import Group
+from app.models.workspace_account import Account
 from app.workspace_settings.schemas import add_group_schema, edit_group_schema, delete_group_schema, add_account_schema, edit_account_schema, delete_account_schema
 from app.workspace_settings.helpers import get_all_groups, get_all_accounts
 
@@ -15,7 +16,7 @@ workspace_settings = Blueprint('workspace_settings', __name__)
 
 CHARACTERS_NOT_ALLOWED = ["<",">","/","\\", "--"]
 
-# General settings: Group and Account
+# General settings: Group, Account, Category, Expense numbering format
 
 @workspace_settings.route("/add_group", methods=["POST"])
 @jwt_required()

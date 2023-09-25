@@ -3,7 +3,8 @@ from sqlalchemy import event
 from flask_login import UserMixin
 from datetime import datetime
 from uuid import uuid4
-from .workspace_settings_general import Group, Account
+# from app.models.workspace_group import Group
+# from app.models.workspace_account import Account
 
 # IN THIS FILE: User and Workspace DB Models
 
@@ -29,7 +30,8 @@ class User(UserMixin, db.Model):
     _uuid = db.Column(db.String(32), unique=True, default=get_uuid)
     _name = db.Column(db.String(200), nullable=False)
     _email = db.Column(db.String(345), nullable=False, unique=True)
-    _password = db.Column(db.String(70), nullable=False)
+    _password = db.Column(db.String(60), nullable=False)
+    _salt = db.Column(db.String(8), nullable=False)
     _created_at = db.Column(db.DateTime, default=datetime.utcnow)
     favorite_workspace = db.Column(db.Integer, db.ForeignKey('workspace.id'))
     owned_workspaces = db.relationship('Workspace', 
@@ -41,10 +43,11 @@ class User(UserMixin, db.Model):
                                             backref=db.backref('users', lazy='dynamic'),
                                             lazy='dynamic') #many-to-many relationship (many users can have access to many workspaces)
     
-    def __init__(self, email, name, password, **kwargs):
+    def __init__(self, email, name, password, salt, **kwargs):
         self._email = email
         self._name = name
         self._password = password
+        self._salt = salt
         self._created_at = datetime.utcnow()
     
     def __repr__(self):
@@ -74,11 +77,17 @@ class User(UserMixin, db.Model):
     def password(self):
         return self._password
     
+    @property
+    def salt(self):
+        return self._salt
+    
     # @property
     # def favorite_workspace(self):
     #     return self._favorite_workspace
 
 event.listen(User, 'before_delete', User.before_delete)
+
+EXPENSE_NUMBERING_CHOICE = ["no_prefix", "date-prefix", "user-prefix", "manual" ]
 
 class Workspace(UserMixin, db.Model):
     __tablename__ = "workspace"
@@ -88,10 +97,15 @@ class Workspace(UserMixin, db.Model):
     _abbreviation = db.Column(db.String(2), nullable=False, default='AB')
     _currency = db.Column(db.String(10), default="USD")
     _created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    _expenseCounter = db.Column(db.Integer, nullable=False, default=0) #increases when an expense is added. Should never be changed manually: handled by the Expense model
+    _expenseCounterUserChoice = db.Column(db.Integer, nullable=False, default=0) #user-defined starting number for expense numbering. If added to _expense_nr_from_workspace_counter (in Expense) in FE, original counter can always be maintained and reverted back to.
+    _expenseNumberingPrefix = db.Column(db.String(12), default="no_prefix") #choices....hjfjhf
     owner_id = db.Column(db.Integer, db.ForeignKey(
         'user.id', ondelete='CASCADE'))
     groups = db.relationship('Group', backref='workspace', lazy='dynamic', cascade='all, delete-orphan')
     accounts = db.relationship('Account', backref='workspace', lazy='dynamic', cascade='all, delete-orphan')
+    expense_categories = db.relationship('Expense_Category', backref='workspace', lazy='dynamic', cascade='all, delete-orphan')
+    expenses = db.relationship('Expense', backref='workspace', lazy='dynamic', cascade='all, delete-orphan')
 
     def __init__(self, name, abbreviation, currency, owner_id, ** kwargs):
         self._name = name
@@ -137,55 +151,4 @@ class Workspace(UserMixin, db.Model):
     def currency(self, value):
         self._currency = value
 
-# many-to-many relationship add:
-# userX.workspaces.append(workspaceY)
-# db.session.add(userX)
-
-# many-to-many relationship list workspaces userX has access to:
-# userX.workspaces.all()
-# many-to-many relationship list users with access to workspaceY:
-# workspaceY.users.all()
-# end many-to-many relationship:
-# userX.workspaces.remove(workspaceY)
-
-# used for sharing Workspace or transfer of Workspace ownership
-# when invite is accepted or cancelled, it should be deleted
-# while invite exists, status is pending
-# INVITE_TYPES = ['give_access', 'ownership_transfer']
-
-# class Invite(UserMixin, db.Model):
-#     __tablename__ = "invites"
-#     id = db.Column(db.Integer, primary_key=True)
-#     _uuid = db.Column(db.String(32), unique=True, default=get_uuid)
-#     _type = db.Column(db.String(200), nullable=False, default=INVITE_TYPES[0])
-#     _title = db.Column(db.String(200), nullable=False, default='You have been invited to join a Work Space')
-#     _text = db.Column(db.String(200), default='')
-#     _email_of_invited = db.Column(db.String(345), nullable=False)
-#     _user_who_sent_invite = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-#     _workspace_in_question = db.Column(db.Integer, db.ForeignKey('workspace.id'), nullable=False)
-#     _created_at = db.Column(db.DateTime, default=datetime.utcnow)
-
-#     def __init__(self, email_of_invited, user_who_sent_invite, workspace_in_question, ** kwargs):
-#         self._email_of_invited = email_of_invited
-#         self._user_who_sent_invite = user_who_sent_invite
-#         self._workspace_in_question = workspace_in_question
-
-#     def __repr__(self):
-#         return f"<Invite: {self.id} type {self._type} sent to {self._email_of_invited} by {self._user_who_sent_invite }>"
-    
-#     @property
-#     def type (self):
-#         return self._type 
-#     @property
-#     def title (self):
-#         return self._title 
-#     @property
-#     def text (self):
-#         return self._text 
-#     @property
-#     def email_of_invited (self):
-#         return self._email_of_invited 
-#     @property
-#     def workspace_in_question (self):
-#         return self._workspace_in_question 
 

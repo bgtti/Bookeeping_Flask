@@ -3,9 +3,10 @@ from datetime import timedelta
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 # from forex_python.converter import CurrencyCodes
 from app.extensions import flask_bcrypt, db
-from app.models.user_workspace import User, Workspace
+from app.models.user_and_workspace import User, Workspace
 from app.models.invite import Invite, INVITE_TYPES
 from app.account.helpers import get_all_user_workspaces, get_all_invites, checkIfCurrencyInList
+from app.account.salt import generate_salt
 
 account = Blueprint('account', __name__)
 
@@ -27,18 +28,21 @@ def register_user():
         return jsonify({'response':'no name or name not valid'})
     if email == '' or email == None or len(email) > 345 or "@" not in email or any(char in email for char in CHARACTERS_NOT_ALLOWED_IN_EMAIL):
         return jsonify({'response':'no email or email not valid'})
-    if password == '' or password == None or len(password) > 70:
+    if password == '' or password == None or len(password) > 60 or len(password) < 6:
         return jsonify({'response':'no password or password not valid'})
     
     user_exists = User.query.filter_by(_email=email).first() is not None
 
     if user_exists:
         return jsonify({'response':'user already exists'}), 409
+    
+    salt = generate_salt(password)
+    salted_password = salt + password
 
     #create user
     try:
-        hashed_password = flask_bcrypt.generate_password_hash(password).decode('utf-8')
-        new_user = User(name=name, email=email, password=hashed_password)
+        hashed_password = flask_bcrypt.generate_password_hash(salted_password).decode('utf-8')
+        new_user = User(name=name, email=email, password=hashed_password, salt=salt)
         db.session.add(new_user)
         db.session.commit()
     except Exception as e:
@@ -64,16 +68,18 @@ def login():
     password = request.json["password"]
 
     if email == '' or email == None or len(email) > 345:
-        return jsonify({'response':'no email'})
-    if password == '' or password == None or len(password) > 70:
-        return jsonify({'response':'no password'})
+        return jsonify({'response':'no email or invalid email'})
+    if password == '' or password == None or len(password) > 60 or len(password) < 6:
+        return jsonify({'response':'no password or invalid password'})
     
     user = User.query.filter_by(_email=email).first()
     
     if user is None:
         return jsonify({'response':'unauthorized'}), 401
     
-    if not flask_bcrypt.check_password_hash(user.password, password):
+    salted_password = user.salt + password
+    
+    if not flask_bcrypt.check_password_hash(user.password, salted_password):
         return jsonify({'response':'unauthorized'}), 401
     
     access_token = create_access_token(identity=email, expires_delta=timedelta(days=30))
@@ -91,7 +97,6 @@ def login():
         'favorite_workspace': workspaces_data['favorite_workspace'],
         'workspaces': workspaces_data['workspaces']
     }
-
 
     return jsonify(response_data)
 
