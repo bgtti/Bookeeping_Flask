@@ -4,7 +4,9 @@ from flask_login import UserMixin
 from datetime import datetime
 from uuid import uuid4
 from .yy_mm_counter import YYMM_counter_expenses as YYMMCounter
-from .user_and_workspace import Workspace
+from .expense_category import Expense_Category
+from .workspace_account import Account
+from .workspace_group import Group
 
 # uuid generation
 def get_uuid():
@@ -25,12 +27,12 @@ class Expense(UserMixin, db.Model):
     _amount = db.Column(db.Float, nullable=False) #amount in workspace currency
     _amount_in_foreign_currency = db.Column(db.Float, nullable=True) 
     _foreign_currency_used = db.Column(db.String(10), nullable=True)
-    _workspace_id = db.Column(db.Integer, db.ForeignKey('workspace_id')) #important relationship
+    _workspace_id = db.Column(db.Integer, db.ForeignKey('workspace.id')) #important relationship
     # remember to write code that, if these the bellow is deleted, there is still some default.... like "None" or so
-    _created_by = db.Column(db.Integer, db.ForeignKey('user_id'), nullable=True) 
-    _group_id = db.Column(db.Integer, db.ForeignKey('group_id'), nullable=True)
-    _account_id = db.Column(db.Integer, db.ForeignKey('account_id'), nullable=True)
-    _category_id = db.Column(db.Integer, db.ForeignKey('category_id'), nullable=True)
+    _created_by = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True) 
+    _group_id = db.Column(db.Integer, db.ForeignKey('group.id'), nullable=True)
+    _account_id = db.Column(db.Integer, db.ForeignKey('account.id'), nullable=True)
+    _category_id = db.Column(db.Integer, db.ForeignKey('expense_category.id'), nullable=True)
 
     def __init__(self, date, description, amount, workspace_id, ** kwargs):
         self._date = date
@@ -98,6 +100,7 @@ class Expense(UserMixin, db.Model):
     
     def create_expense(self, workspace_id, user_id, group_id, account_id, category_id):
         # Get the associated workspace
+        from .user_and_workspace import Workspace
         workspace = Workspace.query.get(workspace_id)
         if workspace:
             # Increment the workspace's expense counter

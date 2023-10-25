@@ -21,8 +21,8 @@ class Invite(UserMixin, db.Model):
     _title = db.Column(db.String(200), nullable=False, default='You have been invited to join a Work Space')
     _text = db.Column(db.String(200), default='')
     _email_of_invited = db.Column(db.String(345), nullable=False)
-    _user_who_sent_invite = db.Column(db.Integer, db.ForeignKey('user_id'), nullable=False)
-    _workspace_in_question = db.Column(db.Integer, db.ForeignKey('workspace_id'), nullable=False)
+    _user_who_sent_invite = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    _workspace_in_question = db.Column(db.Integer, db.ForeignKey('workspace.id'), nullable=False)
     _created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     def __init__(self, email_of_invited, user_who_sent_invite, workspace_in_question, ** kwargs):

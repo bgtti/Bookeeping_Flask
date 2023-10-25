@@ -3,8 +3,11 @@ from sqlalchemy import event
 from flask_login import UserMixin
 from datetime import datetime
 from uuid import uuid4
-# from app.models.workspace_group import Group
-# from app.models.workspace_account import Account
+from app.models.workspace_group import Group
+from app.models.workspace_account import Account
+from app.models.expense_category import Expense_Category
+from app.models.expense import Expense
+# eventually import invites when this is implemented
 
 # IN THIS FILE: User and Workspace DB Models
 

@@ -17,7 +17,7 @@ def create_admin_acct():
     super_admin_exists = User.query.get(1)
     if not super_admin_exists:
         # create super admin
-        salt = generate_salt(ADMIN_PW)
+        salt = generate_salt()
         salted_pw = salt + ADMIN_PW
         hashed_password = flask_bcrypt.generate_password_hash(salted_pw ).decode('utf-8')
         the_super_admin = User(

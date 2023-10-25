@@ -36,7 +36,7 @@ def register_user():
     if user_exists:
         return jsonify({'response':'user already exists'}), 409
     
-    salt = generate_salt(password)
+    salt = generate_salt()
     salted_password = salt + password
 
     #create user

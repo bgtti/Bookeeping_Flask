@@ -16,7 +16,7 @@ class Account(UserMixin, db.Model):
     _name = db.Column(db.String(30), nullable=False)
     _description = db.Column(db.String(100), nullable=True)
     _code = db.Column(db.String(10), nullable=True, default="00")
-    _workspace_id = db.Column(db.Integer, db.ForeignKey('workspace_id'))
+    _workspace_id = db.Column(db.Integer, db.ForeignKey('workspace.id'))
 
     def __init__(self, name, description, code, workspace_id, ** kwargs):
         self._name = name
