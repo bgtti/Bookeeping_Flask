@@ -49,3 +49,26 @@ def get_all_accounts(workspace_id):
         account_data.append(account_info)
     
     return account_data
+
+def get_all_expense_categories(workspace_id):
+    '''Requires workspace id and outputs array of all expence category objects belonging to workspace.'''
+
+    workspace = Workspace.query.filter_by(id=workspace_id).first()
+
+    if not workspace:
+        return "Error: workspace could not be found."
+    
+    expense_categories = workspace.expense_categories
+
+    # Create a list of expense category data to return
+    expense_category_data = []
+    for category in expense_categories:
+        category_info = {
+            "uuid": category.uuid,
+            "name": category.name,
+            "description": category.description,
+            "code": category.code,
+        }
+        expense_category_data.append(category_info)
+    
+    return expense_category_data

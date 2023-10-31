@@ -90,7 +90,11 @@ class User(UserMixin, db.Model):
 
 event.listen(User, 'before_delete', User.before_delete)
 
-EXPENSE_NUMBERING_CHOICE = ["no_prefix", "date-prefix", "user-prefix", "manual" ]
+# These are the options for expense settings. If changed, make sure to review the Expense Model.
+EXPENSE_NUMBER_DIGITS = [3,4,5] 
+EXPENSE_NUMBER_FORMAT = ["YMN", "YN", "N"] #Where Y=year, M=month, N=number. Examples: 2023010001, 20230001, 0001. 
+EXPENSE_NUMBER_YEAR_DIGITS = [2,4] 
+EXPENSE_NUMBER_SEPARATOR = ["-", "/", ""] 
 
 class Workspace(UserMixin, db.Model):
     __tablename__ = "workspace"
@@ -100,9 +104,16 @@ class Workspace(UserMixin, db.Model):
     _abbreviation = db.Column(db.String(2), nullable=False, default='AB')
     _currency = db.Column(db.String(10), default="USD")
     _created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    _expenseCounter = db.Column(db.Integer, nullable=False, default=0) #increases when an expense is added. Should never be changed manually: handled by the Expense model
-    _expenseCounterUserChoice = db.Column(db.Integer, nullable=False, default=0) #user-defined starting number for expense numbering. If added to _expense_nr_from_workspace_counter (in Expense) in FE, original counter can always be maintained and reverted back to.
-    _expenseNumberingPrefix = db.Column(db.String(12), default="no_prefix") #choices....hjfjhf
+    # Expense numbering
+    _expense_number_digits = db.Column(db.Integer, nullable=False, default=3)
+    _expense_number_format = db.Column(db.String(3), nullable=False, default="YMN")
+    _expense_number_start = db.Column(db.Integer, nullable=False, default=1)
+    _expense_number_year_digits = db.Column(db.Integer, nullable=False, default=4)
+    _expense_number_separator = db.Column(db.String(1), nullable=False, default="-")
+    _expense_number_custom_prefix = db.Column(db.String(10), nullable=False, default="")
+    _expense_counter = db.Column(db.Integer, nullable=False, default=0) #increases when an expense is added. Should never be changed manually: handled by the Expense model. This counter never resets.
+    _expense_counter_custom_start = db.Column(db.Integer, nullable=False, default=0) #user-defined starting number for expense numbering. If added to _expense_nr_from_workspace_counter (in Expense) in FE, original counter can always be maintained and reverted back to.
+
     owner_id = db.Column(db.Integer, db.ForeignKey(
         'user.id', ondelete='CASCADE'))
     groups = db.relationship('Group', backref='workspace', lazy='dynamic', cascade='all, delete-orphan')

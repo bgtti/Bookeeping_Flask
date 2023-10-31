@@ -2,9 +2,8 @@
 
 Bookeeping_BE is the Flask backend of the Expenses React project
 
-creating a virtual environment (windows)
-python -m venv env
-.\env\Scripts\activate
+problems with the python interpreter:
+https://stackoverflow.com/questions/65694813/import-flask-could-not-be-resolved-from-source-pylance#:~:text=This%20happens%20when%20the%20Python,in%20the%20venv%2Fbin%20directory.
 
 in .env include:
 SECRET_KEY = "..."

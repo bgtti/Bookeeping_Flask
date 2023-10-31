@@ -3,7 +3,7 @@ from sqlalchemy import event
 from flask_login import UserMixin
 from datetime import datetime
 from uuid import uuid4
-from .yy_mm_counter import YYMM_counter_expenses as YYMMCounter
+from .yy_counter import YYMM_counter_expenses as YYMMCounter, YY_counter_expenses as YYCounter
 from .expense_category import Expense_Category
 from .workspace_account import Account
 from .workspace_group import Group
@@ -19,8 +19,10 @@ class Expense(UserMixin, db.Model):
     _uuid = db.Column(db.String(32), unique=True, default=get_uuid)
     _created_at = db.Column(db.DateTime, default=datetime.utcnow)
     _date = db.Column(db.DateTime, default=datetime.utcnow)
+    _expense_number = db.Column(db.String(50), unique=True, default="")
     _expense_nr_from_workspace_counter = db.Column(db.Integer, nullable=False, unique=True)
     _expense_nr_from_YYMM_counter = db.Column(db.Integer, nullable=False)
+    _expense_nr_from_YY_counter = db.Column(db.Integer, nullable=False)
     _expense_nr_from_user = db.Column(db.String(50), nullable=True)
     _description = db.Column(db.String(100), nullable=False)
     _notes = db.Column(db.String(100), nullable=False)
@@ -41,6 +43,7 @@ class Expense(UserMixin, db.Model):
         self._workspace_id = workspace_id
         self._expense_nr_from_workspace_counter = 0  # Initialize with 0
         self._expense_nr_from_YYMM_counter = 0  # Initialize with 0
+        self._expense_nr_from_YY_counter = 0  # Initialize with 0
 
     @property
     def uuid(self):
@@ -57,6 +60,10 @@ class Expense(UserMixin, db.Model):
     @property
     def expense_nr_from_YYMM_counter(self):
         return self._expense_nr_from_YYMM_counter
+    
+    @property
+    def expense_nr_from_YY_counter(self):
+        return self._expense_nr_from_YY_counter
     
     @property
     def expense_nr_from_user(self):
@@ -104,10 +111,10 @@ class Expense(UserMixin, db.Model):
         workspace = Workspace.query.get(workspace_id)
         if workspace:
             # Increment the workspace's expense counter
-            workspace._expenseCounter += 1
+            workspace._expense_counter += 1
 
             # Set the expense number from the workspace counter
-            self._expense_nr_from_workspace_counter = workspace._expenseCounter
+            self._expense_nr_from_workspace_counter = workspace._expense_counter
 
             # Calculate year and month from _date
             year = self._date.year
@@ -125,6 +132,49 @@ class Expense(UserMixin, db.Model):
 
             # Set the expense number from the YYMMCounter
             self._expense_nr_from_YYMM_counter = yymm_counter.counter
+
+            # Check if a YYCounter record exists for this year
+            yy_counter = YYCounter.query.filter_by(year=year).first()
+            if not yy_counter:
+                # Create a new YYMMCounter record if it doesn't exist
+                yy_counter = YYCounter(year=year, counter=0)
+                db.session.add(yy_counter)
+
+            # Increment the YY counter
+            yy_counter.counter += 1
+
+            # Set the expense number from the YYCounter
+            self._expense_nr_from_YY_counter = yy_counter.counter
+
+            # Create Expense number
+            the_number_components = []
+            number_from_counter = ""
+            if workspace._expense_number_custom_prefix != "":
+                the_number_components.append(workspace._expense_number_custom_prefix)
+            if workspace._expense_number_format == "YMN" or workspace._expense_number_format == "YN":
+                if workspace._expense_number_year_digits == 2:
+                    the_number_components.append(self._date.strftime("%y"))
+                else:
+                    the_number_components.append(self._date.strftime("%Y"))
+                if workspace._expense_number_format == "YMN":
+                    the_number_components.append(self._date.strftime("%m").zfill(2))
+                    number_from_counter = str(self._expense_nr_from_YYMM_counter)
+                else:
+                    number_from_counter =str(self._expense_nr_from_YY_counter)
+            if workspace._expense_number_format == "N":
+                if workspace._expense_number_start == 1:
+                    number_from_counter = str(workspace._expense_counter)
+                else:
+                    num_sum = workspace._expense_counter + workspace._expense_counter_custom_start - 1
+                    number_from_counter = str(num_sum)
+            desired_digits = workspace._expense_number_digits
+            if len(number_from_counter) < desired_digits:
+                number_from_counter = number_from_counter.zfill(desired_digits)
+            the_number_components.append(number_from_counter)
+            separator = workspace._expense_number_separator
+            the_expense_number = separator.join(the_number_components)
+
+            self._expense_number = the_expense_number
 
             # Set other fields
             self._created_by = user_id
