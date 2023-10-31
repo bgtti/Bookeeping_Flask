@@ -8,8 +8,8 @@ from app.models.user_and_workspace import User, Workspace
 from app.models.workspace_group import Group
 from app.models.workspace_account import Account
 from app.models.expense_category import Expense_Category
-from app.workspace_settings.schemas import add_group_schema, edit_group_schema, delete_group_schema, add_account_schema, edit_account_schema, delete_account_schema, add_expense_category_schema, edit_expense_category_schema, delete_expense_category_schema
-from app.workspace_settings.helpers import get_all_groups, get_all_accounts, get_all_expense_categories
+from app.workspace_settings.schemas import all_workspace_settings_schema, add_group_schema, edit_group_schema, delete_group_schema, add_account_schema, edit_account_schema, delete_account_schema, add_expense_category_schema, edit_expense_category_schema, delete_expense_category_schema, set_expense_numbering_format_schema
+from app.workspace_settings.helpers import get_all_workspace_settings, get_all_groups, get_all_accounts, get_all_expense_categories, get_expense_numbering_settings, get_all_workspace_settings
 
 workspace_settings = Blueprint('workspace_settings', __name__)
 
@@ -19,6 +19,42 @@ CHARACTERS_NOT_ALLOWED = ["<",">","/","\\", "--"]
 
 # General settings: Group, Account, Category, Expense numbering format
 
+# *********** ALL WORKSPACE SETTINGS ***********
+@workspace_settings.route("/all_settings", methods=["POST"])
+@jwt_required()
+def all_settings():
+    # Get the JSON data from the request body
+    json_data = request.get_json()
+
+    # Validate the JSON data against the schema
+    try:
+        jsonschema.validate(instance=json_data, schema=all_workspace_settings_schema)
+    except jsonschema.exceptions.ValidationError as e:
+        return jsonify({'response': 'Invalid JSON data.', 'error': str(e)}), 400
+
+    # Validate user and token
+    current_user_email = get_jwt_identity()
+    user = User.query.filter_by(_email=current_user_email).first()
+    if not user:
+        return jsonify({'response': 'User not found'}), 404
+    
+    # Check if workspace exists and if user is either owner or has access to it
+    workspace_uuid = json_data.get("workspace_uuid")
+    workspace = Workspace.query.filter_by(_uuid=workspace_uuid).first()
+    if not workspace:
+        return jsonify({'response': 'Workspace not found.'}), 404
+    if workspace.owner_id != user.id or workspace.users.filter_by(id=user.id).first() is not None:
+        return jsonify({'response': 'You do not have access to this workspace.'}), 403
+
+    # Get all workspace settings data
+    try:
+        all_settings = get_all_workspace_settings(workspace.id)
+    except Exception as e:
+        return jsonify({'response': 'A database error prevented workspace settings data to be sent.', 'error': str(e)}), 500
+
+    return jsonify(all_settings)
+
+# *********** GROUP ***********
 @workspace_settings.route("/add_group", methods=["POST"])
 @jwt_required()
 def add_group():
@@ -469,20 +505,35 @@ def set_expense_numbering_format():
         return jsonify({'response': 'Workspace not found.'}), 404
     if workspace.owner_id != user.id or workspace.users.filter_by(id=user.id).first() is not None:
         return jsonify({'response': 'You do not have access to this workspace.'}), 403
+    
+    # Verify expense setting compliance
+    expense_number_format = json_data.get("expense_number_format")
+    expense_number_separator = json_data.get("expense_number_separator")
+    # Check that expense_number_format is either "YMN", "YN", or "N"
+    # Check that expense_number_separators is either "/", "-", or ""
 
-    # Save expense category
+    # Save expense setting
+    expense_number_digits = json_data.get("expense_number_digits")
+    expense_number_start = json_data.get("expense_number_start")
+    expense_number_year_digits = json_data.get("expense_number_year_digits")
+    expense_number_custom_prefix = json_data.get("expense_number_custom_prefix")
+
     try:
-        new_expense_category = Expense_Category(name=json_data["name"], description=json_data.get("description"), code=json_data.get("code"), workspace_id=workspace.id)
-        db.session.add(new_expense_category)
+        workspace._expense_number_digits = expense_number_digits
+        workspace._expense_number_format = expense_number_format
+        workspace._expense_number_start = expense_number_start
+        workspace._expense_number_year_digits = expense_number_year_digits
+        workspace._expense_number_separator = expense_number_separator
+        workspace._expense_number_custom_prefix = expense_number_custom_prefix
         db.session.commit()
     except Exception as e:
         db.session.rollback()
-        return jsonify({'response': 'There was an error adding expense category', 'error': str(e)}), 500
+        return jsonify({'response': 'There was an error setting expense numbering.', 'error': str(e)}), 500
     
-    # Get all expense categories belonging to this WS
+    # Get expense settings from user
     try:
-        expense_category_data = get_all_expense_categories(workspace.id)
+        expense_numbering_settings = get_expense_numbering_settings(workspace.id)
     except Exception as e:
-        return jsonify({'response': 'Expense category added, but database error prevented expense category data to be sent.', 'error': str(e)}), 500
+        return jsonify({'response': 'Expense numbering set, but database error prevented expense numbering setting data to be sent.', 'error': str(e)}), 500
 
-    return jsonify(expense_category_data)
+    return jsonify(expense_numbering_settings)

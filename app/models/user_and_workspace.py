@@ -104,7 +104,7 @@ class Workspace(UserMixin, db.Model):
     _abbreviation = db.Column(db.String(2), nullable=False, default='AB')
     _currency = db.Column(db.String(10), default="USD")
     _created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    # Expense numbering
+    # Expense numbering settings
     _expense_number_digits = db.Column(db.Integer, nullable=False, default=3)
     _expense_number_format = db.Column(db.String(3), nullable=False, default="YMN")
     _expense_number_start = db.Column(db.Integer, nullable=False, default=1)

@@ -2,6 +2,73 @@ from app.models.user_and_workspace import User, Workspace
 from app.models.invite import Invite, INVITE_TYPES
 from app.extensions import db
 from app.data.currency_list import currency_list
+def get_all_workspace_settings(workspace_id):
+    '''Requires workspace id and outputs all workspace settings as a dictionary of objects.'''
+    workspace = Workspace.query.filter_by(id=workspace_id).first()
+
+    if not workspace:
+        return "Error: workspace could not be found."
+    
+    # Groups
+    groups = workspace.groups
+
+    # Create a list of group data to return
+    group_data = []
+    for group in groups:
+        group_info = {
+            "uuid": group.uuid,
+            "name": group.name,
+            "description": group.description,
+            "code": group.code,
+        }
+        group_data.append(group_info)
+    
+    # Accounts
+    accounts = workspace.accounts
+
+    # Create a list of account data to return
+    account_data = []
+    for account in accounts:
+        account_info = {
+            "uuid": account.uuid,
+            "name": account.name,
+            "description": account.description,
+            "code": account.code,
+        }
+        account_data.append(account_info)
+    
+    # Categories
+    expense_categories = workspace.expense_categories
+
+    # Create a list of expense category data to return
+    expense_category_data = []
+    for category in expense_categories:
+        category_info = {
+            "uuid": category.uuid,
+            "name": category.name,
+            "description": category.description,
+            "code": category.code,
+        }
+        expense_category_data.append(category_info)
+
+    # Numbering format
+    expense_numbering_settings = {
+        "expense_number_digits": workspace._expense_number_digits,
+        "expense_number_format": workspace._expense_number_format,
+        "expense_number_start": workspace._expense_number_start,
+        "expense_number_year_digits": workspace._expense_number_year_digits,
+        "expense_number_separator": workspace._expense_number_separator,
+        "expense_number_custom_prefix": workspace._expense_number_custom_prefix,
+    }
+    
+    all_workspace_settings = {
+        "groups": group_data,
+        "accounts":account_data,
+        "expense_categories":expense_category_data,
+        "expense_numbering_settings": expense_numbering_settings
+    }
+    
+    return all_workspace_settings
 
 def get_all_groups(workspace_id):
     '''Requires workspace id and outputs array of all group objects belonging to workspace.'''
@@ -72,3 +139,23 @@ def get_all_expense_categories(workspace_id):
         expense_category_data.append(category_info)
     
     return expense_category_data
+
+def get_expense_numbering_settings(workspace_id):
+    '''Requires workspace id and outputs a dictionary of numbering settings belonging to workspace.'''
+
+    workspace = Workspace.query.filter_by(id=workspace_id).first()
+
+    if not workspace:
+        return "Error: workspace could not be found."
+    
+    expense_numbering_settings = {
+        "expense_number_digits": workspace._expense_number_digits,
+        "expense_number_format": workspace._expense_number_format,
+        "expense_number_start": workspace._expense_number_start,
+        "expense_number_year_digits": workspace._expense_number_year_digits,
+        "expense_number_separator": workspace._expense_number_separator,
+        "expense_number_custom_prefix": workspace._expense_number_custom_prefix,
+    }
+    
+    return expense_numbering_settings
+
