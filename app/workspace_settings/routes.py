@@ -8,14 +8,16 @@ from app.models.user_and_workspace import User, Workspace
 from app.models.workspace_group import Group
 from app.models.workspace_account import Account
 from app.models.expense_category import Expense_Category
+from app.account.helpers import get_workspace_settings
 from app.workspace_settings.schemas import all_workspace_settings_schema, add_group_schema, edit_group_schema, delete_group_schema, add_account_schema, edit_account_schema, delete_account_schema, add_expense_category_schema, edit_expense_category_schema, delete_expense_category_schema, set_expense_numbering_format_schema
-from app.workspace_settings.helpers import get_all_workspace_settings, get_all_groups, get_all_accounts, get_all_expense_categories, get_expense_numbering_settings, get_all_workspace_settings
+from app.workspace_settings.helpers import get_all_groups, get_all_accounts, get_all_expense_categories, get_expense_numbering_settings
+from app.constants.constants import CONSTANTS
 
 workspace_settings = Blueprint('workspace_settings', __name__)
 
 # IN THIS FILE: routes used to set, modify and delete objects in Workspace Settings
 
-CHARACTERS_NOT_ALLOWED = ["<",">","/","\\", "--"]
+CHARACTERS_NOT_ALLOWED_IN_EMAIL = CONSTANTS["CHARACTERS_NOT_ALLOWED_IN_EMAIL"]
 
 # General settings: Group, Account, Category, Expense numbering format
 
@@ -48,7 +50,7 @@ def all_settings():
 
     # Get all workspace settings data
     try:
-        all_settings = get_all_workspace_settings(workspace.id)
+        all_settings = get_workspace_settings(workspace.id)
     except Exception as e:
         return jsonify({'response': 'A database error prevented workspace settings data to be sent.', 'error': str(e)}), 500
 

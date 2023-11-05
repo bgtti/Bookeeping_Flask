@@ -21,9 +21,13 @@ def create_app(config_class=Config):
     from flask import current_app
 
     from app.account.routes import account
+    from app.workspace.routes import workspace
+    from app.invites.routes import invites
     from app.expenses.routes import expenses
     from app.workspace_settings.routes import workspace_settings
     app.register_blueprint(account, url_prefix='/api/account')
+    app.register_blueprint(workspace, url_prefix='/api/workspace')
+    app.register_blueprint(invites, url_prefix='/api/invites')
     app.register_blueprint(workspace_settings, url_prefix='/api/workspace_settings')
     app.register_blueprint(expenses)
 

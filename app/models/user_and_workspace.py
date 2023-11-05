@@ -32,11 +32,11 @@ class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True, unique=True)
     _uuid = db.Column(db.String(32), unique=True, default=get_uuid)
     _name = db.Column(db.String(200), nullable=False)
-    _email = db.Column(db.String(345), nullable=False, unique=True)
+    _email = db.Column(db.String(320), nullable=False, unique=True)
     _password = db.Column(db.String(60), nullable=False)
     _salt = db.Column(db.String(8), nullable=False)
     _created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    favorite_workspace = db.Column(db.Integer, db.ForeignKey('workspace.id'))
+    favorite_workspace_id = db.Column(db.Integer, db.ForeignKey('workspace.id'))
     owned_workspaces = db.relationship('Workspace', 
                                         backref='the_owner', 
                                         cascade='all,delete', 
@@ -90,6 +90,8 @@ class User(UserMixin, db.Model):
 
 event.listen(User, 'before_delete', User.before_delete)
 
+# CONSTANTS FOR WORKSPACE
+# IS_FAVORITE = ["True", "False"]
 # These are the options for expense settings. If changed, make sure to review the Expense Model.
 EXPENSE_NUMBER_DIGITS = [3,4,5] 
 EXPENSE_NUMBER_FORMAT = ["YMN", "YN", "N"] #Where Y=year, M=month, N=number. Examples: 2023010001, 20230001, 0001. 
@@ -104,6 +106,7 @@ class Workspace(UserMixin, db.Model):
     _abbreviation = db.Column(db.String(2), nullable=False, default='AB')
     _currency = db.Column(db.String(10), default="USD")
     _created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    # _is_favorite = db.Column(db.String(5), nullable=False, default="False")
     # Expense numbering settings
     _expense_number_digits = db.Column(db.Integer, nullable=False, default=3)
     _expense_number_format = db.Column(db.String(3), nullable=False, default="YMN")
@@ -136,6 +139,9 @@ class Workspace(UserMixin, db.Model):
     
     def get_accounts(self):
         return self.accounts.all()
+    
+    def get_expense_categories(self):
+        return self.expense_categories.all()
 
     @property
     def uuid(self):
@@ -153,6 +159,10 @@ class Workspace(UserMixin, db.Model):
     def currency(self):
         return self._currency
     
+    # @property
+    # def is_favorite(self):
+    #     return self._is_favorite
+    
     @name.setter
     def name(self, value):
         self._name = value
@@ -164,5 +174,9 @@ class Workspace(UserMixin, db.Model):
     @currency.setter
     def currency(self, value):
         self._currency = value
+
+    # @is_favorite.setter
+    # def is_favorite(self, value):
+    #     self._is_favorite = value
 
 

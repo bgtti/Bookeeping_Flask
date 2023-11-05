@@ -1,7 +1,6 @@
 from app.models.user_and_workspace import User, Workspace
-from app.models.invite import Invite, INVITE_TYPES
+from app.models.invite import Invite
 from app.extensions import db
-from app.data.currency_list import currency_list
 
 def get_all_user_workspaces(email):
     """
@@ -24,12 +23,13 @@ def get_all_user_workspaces(email):
     # Check if user has workspaces
     if has_owned_workspaces or has_accessed_workspaces:
         # Check if user has favorite workspace
-        if user.favorite_workspace and user.favorite_workspace != "" and user.favorite_workspace !=None:
+        if user.favorite_workspace_id and user.favorite_workspace_id != "" and user.favorite_workspace_id !=None:
+            favorite = Workspace.query.filter_by(id=user.favorite_workspace_id).first()
             all_workspaces_data["favorite_workspace"] = {
-                "uuid": user.favorite_workspace.uuid,
-                "name": user.favorite_workspace.name,
-                "currency": user.favorite_workspace.currency,
-                "abbreviation": user.favorite_workspace.abbreviation,
+                "uuid": favorite.uuid,
+                "name": favorite.name,
+                "currency": favorite.currency,
+                "abbreviation": favorite.abbreviation,
             }
         all_workspaces_data["has_workspaces"] = True
 
@@ -104,9 +104,65 @@ def get_all_invites(email):
 
     return all_invites_data
 
-def checkIfCurrencyInList(currency):
-    for currency_info in currency_list:
-        if currency_info["code"] == currency:
-            return True
+def get_workspace_settings(workspace_id):
+    '''requires workspace id and returns dictionary of workspace settings'''
+    workspace = Workspace.query.filter_by(id=workspace_id).first()
 
-    return False
+    if workspace is None:
+        return ""
+    
+    ws_settings = {
+        "uuid": workspace._uuid,
+        "groups": [],
+        "accounts": [],
+        "expense_categories": [],
+        "expense_numbering_settings": {
+            "number_digits": workspace._expense_number_digits,
+            "number_format":workspace._expense_number_format,
+            "number_start":workspace._expense_number_start,
+            "number_year_digits":workspace._expense_number_year_digits,
+            "number_separator":workspace._expense_number_separator,
+            "number_custom_prefix":workspace._expense_number_custom_prefix,
+            "expense_counter":workspace._expense_counter,
+            "expense_counter_custom_start": workspace._expense_counter_custom_start
+        }
+        
+    }
+    
+    # add workspace groups
+    the_groups = workspace.get_groups()
+    if the_groups:
+        for group in the_groups:
+            group_data = {
+                "uuid": group._uuid,
+                "name": group._name,
+                "description": group._description,
+                "code": group._code,
+            }
+            ws_settings["groups"].append(group_data)
+
+    # add workspace accounts
+    the_accounts = workspace.get_accounts()
+    if the_accounts:
+        for account in the_accounts:
+            account_data = {
+                "uuid": account._uuid,
+                "name": account._name,
+                "description": account._description,
+                "code": account._code,
+            }
+            ws_settings["accounts"].append(account_data)
+    
+    # add expense categories
+    the_expense_categories = workspace.get_expense_categories()
+    if the_expense_categories:
+        for expense_category in the_expense_categories:
+            expense_category_data = {
+                "uuid": expense_category._uuid,
+                "name": expense_category._name,
+                "description": expense_category._description,
+                "code": expense_category._code,
+            }
+            ws_settings["expense_categories"].append(expense_category_data)
+    
+    return ws_settings

@@ -1,4 +1,4 @@
-currency_list = [
+CURRENCY_LIST = [
     { "name": "Afghan Afghani", "code": "AFA" },
     { "name": "Albanian Lek", "code": "ALL" },
     { "name": "Algerian Dinar", "code": "DZD" },
