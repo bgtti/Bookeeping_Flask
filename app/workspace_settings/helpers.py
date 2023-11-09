@@ -149,12 +149,14 @@ def get_expense_numbering_settings(workspace_id):
         return "Error: workspace could not be found."
     
     expense_numbering_settings = {
-        "expense_number_digits": workspace._expense_number_digits,
-        "expense_number_format": workspace._expense_number_format,
-        "expense_number_start": workspace._expense_number_start,
-        "expense_number_year_digits": workspace._expense_number_year_digits,
-        "expense_number_separator": workspace._expense_number_separator,
-        "expense_number_custom_prefix": workspace._expense_number_custom_prefix,
+        "number_digits": workspace._expense_number_digits,
+        "number_format":workspace._expense_number_format,
+        "number_start":workspace._expense_number_start,
+        "number_year_digits":workspace._expense_number_year_digits,
+        "number_separator":workspace._expense_number_separator,
+        "number_custom_prefix":workspace._expense_number_custom_prefix,
+        "expense_counter":workspace._expense_counter,
+        "expense_counter_custom_start": workspace._expense_counter_custom_start
     }
     
     return expense_numbering_settings
