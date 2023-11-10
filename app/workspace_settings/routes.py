@@ -2,15 +2,17 @@ from flask import Blueprint, request, jsonify
 from datetime import timedelta
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 import jsonschema
+import string
 # from forex_python.converter import CurrencyCodes
 from app.extensions import flask_bcrypt, db
 from app.models.user_and_workspace import User, Workspace
 from app.models.workspace_group import Group
 from app.models.workspace_account import Account
+from app.models.workspace_tag import Tag
 from app.models.expense_category import Expense_Category
 from app.account.helpers import get_workspace_settings
-from app.workspace_settings.schemas import all_workspace_settings_schema, add_group_schema, edit_group_schema, delete_group_schema, add_account_schema, edit_account_schema, delete_account_schema, add_expense_category_schema, edit_expense_category_schema, delete_expense_category_schema, set_expense_numbering_format_schema
-from app.workspace_settings.helpers import get_all_groups, get_all_accounts, get_all_expense_categories, get_expense_numbering_settings
+from app.workspace_settings.schemas import all_workspace_settings_schema, add_group_schema, edit_group_schema, delete_group_schema, add_account_schema, edit_account_schema, delete_account_schema, add_tag_schema, edit_tag_schema, delete_tag_schema, add_expense_category_schema, edit_expense_category_schema, delete_expense_category_schema, set_expense_numbering_format_schema
+from app.workspace_settings.helpers import get_all_groups, get_all_accounts, get_all_tags,get_all_expense_categories, get_expense_numbering_settings
 from app.constants.constants import CONSTANTS
 
 workspace_settings = Blueprint('workspace_settings', __name__)
@@ -335,6 +337,157 @@ def delete_account():
         return jsonify({'response': 'Account deleted, but database error prevented account data from being sent.', 'error': str(e)}), 500
 
     return jsonify(account_data)
+
+# ********** TAGS *********
+@workspace_settings.route("/add_tag", methods=["POST"])
+@jwt_required()
+def add_tag():
+    # Get the JSON data from the request body
+    json_data = request.get_json()
+
+    # Validate the JSON data against the schema
+    try:
+        jsonschema.validate(instance=json_data, schema=add_tag_schema)
+    except jsonschema.exceptions.ValidationError as e:
+        return jsonify({'response': 'Invalid JSON data.', 'error': str(e)}), 400
+
+    # Validate user and token
+    current_user_email = get_jwt_identity()
+    user = User.query.filter_by(_email=current_user_email).first()
+    if not user:
+        return jsonify({'response': 'User not found'}), 404
+    
+    # Check if workspace exists and if user is either owner or has access to it
+    workspace_uuid = json_data.get("workspace_uuid")
+    workspace = Workspace.query.filter_by(_uuid=workspace_uuid).first()
+    if not workspace:
+        return jsonify({'response': 'Workspace not found.'}), 404
+    if workspace.owner_id != user.id or workspace.users.filter_by(id=user.id).first() is not None:
+        return jsonify({'response': 'You do not have access to this workspace.'}), 403
+    
+    # Check tag colour
+    tag_colour = json_data.get("colour")
+    if tag_colour[0] != "#":
+        return jsonify({'response': 'Hex colour required. Format: #000000'}), 412
+    if not all(char in string.hexdigits for char in tag_colour[1:6]):
+        return jsonify({'response': 'Hex colour required. Format: # + 0-9/a-f/A-F '}), 412
+
+    # Save tag
+    try:
+        new_tag = Tag(name=json_data["name"], colour=tag_colour, workspace_id=workspace.id)
+        db.session.add(new_tag)
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'response': 'There was an error adding tag', 'error': str(e)}), 500
+    
+    # Get all tags belonging to this WS
+    try:
+        all_tags = get_all_tags(workspace.id)
+    except Exception as e:
+        return jsonify({'response': 'Tag added, but database error prevented tag data to be sent.', 'error': str(e)}), 500
+
+    return jsonify(all_tags)
+
+@workspace_settings.route("/edit_tag", methods=["POST"])
+@jwt_required()
+def edit_tag():
+    # Get the JSON data from the request body
+    json_data = request.get_json()
+
+    # Validate the JSON data against the schema
+    try:
+        jsonschema.validate(instance=json_data, schema=edit_tag_schema)
+    except jsonschema.exceptions.ValidationError as e:
+        return jsonify({'response': 'Invalid JSON data.', 'error': str(e)}), 400
+
+    # Validate user and token
+    current_user_email = get_jwt_identity()
+    user = User.query.filter_by(_email=current_user_email).first()
+    if not user:
+        return jsonify({'response': 'User not found'}), 404
+    
+    # Check if tag exists and if user is either owner or has access to it
+    tag_uuid = json_data["tag_uuid"]
+    tag = Tag.query.filter_by(_uuid=tag_uuid).first()
+    if not tag:
+        return jsonify({'response': 'Tag not found.'}), 404
+    if tag.workspace.owner_id != user.id or tag.workspace.users.filter_by(id=user.id).first() is not None:
+        return jsonify({'response': 'You do not have access to this workspace.'}), 403
+
+    # Check tag colour
+    tag_colour = json_data.get("colour")
+    if tag_colour[0] != "#":
+        return jsonify({'response': 'Hex colour required. Format: #000000'}), 412
+    if not all(char in string.hexdigits for char in tag_colour[1:6]):
+        return jsonify({'response': 'Hex colour required. Format: # + 0-9/a-f/A-F '}), 412
+    
+    # Save tag
+    # Update tag information
+    try:
+        if "name" in json_data:
+            tag._name = json_data["name"]
+        if "colour" in json_data:
+            tag._colour = tag_colour
+        
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'response': 'There was an error editing the tag', 'error': str(e)}), 500
+    
+    # Get all tags belonging to this WS
+    try:
+        tag_data = get_all_tags(tag.workspace.id)
+        
+    except Exception as e:
+        return jsonify({'response': 'Tag added, but database error prevented tag data to be sent.', 'error': str(e)}), 500
+
+    return jsonify(tag_data)
+
+@workspace_settings.route("/delete_tag", methods=["DELETE"])
+@jwt_required()
+def delete_tag():
+    # Get the JSON data from the request body
+    json_data = request.get_json()
+
+    # Validate the JSON data against the schema
+    try:
+        jsonschema.validate(instance=json_data, schema=delete_tag_schema)
+    except jsonschema.exceptions.ValidationError as e:
+        return jsonify({'response': 'Invalid JSON data.', 'error': str(e)}), 400
+
+    # Validate user and token
+    current_user_email = get_jwt_identity()
+    user = User.query.filter_by(_email=current_user_email).first()
+    if not user:
+        return jsonify({'response': 'User not found'}), 404
+
+    tag_uuid = json_data["tag_uuid"]
+
+    # Check if tag exists and if user is either the owner or has access to it
+    tag = Tag.query.filter_by(_uuid=tag_uuid).first()
+    if not tag:
+        return jsonify({'response': 'Tag not found.'}), 404
+
+    # Check if the user is the owner of the workspace that contains the tag
+    if tag.workspace.owner_id != user.id:
+        return jsonify({'response': 'You do not have permission to delete this tag.'}), 403
+
+    try:
+        # Delete the tag
+        db.session.delete(tag)
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'response': 'There was an error deleting the tag', 'error': str(e)}), 500
+
+    # Get all tags belonging to the workspace after deletion
+    try:
+        tag_data = get_all_tags(tag.workspace.id)
+    except Exception as e:
+        return jsonify({'response': 'Tag deleted, but database error prevented tag data from being sent.', 'error': str(e)}), 500
+
+    return jsonify(tag_data)
 
 # ********** EXPENSE CATEGORY *********
 

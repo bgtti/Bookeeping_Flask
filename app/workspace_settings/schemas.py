@@ -1,6 +1,6 @@
 # JSON schemas for instance validation pertaining to Workspace Settings APIs
+# Request requirements: 'Bearer token' in request header and the following in the body accordinngly
 
-# Request requirements: 'Bearer token' in request header and the following in the body:
 all_workspace_settings_schema = {
     "type": "object",
     "properties": {
@@ -10,6 +10,7 @@ all_workspace_settings_schema = {
     "required": ["workspace_uuid"]
 }
 
+# GROUPS
 add_group_schema = {
     "type": "object",
     "properties": {
@@ -43,6 +44,7 @@ delete_group_schema = {
     "required": ["group_uuid"]
 }
 
+# ACCOUNTS
 # account bellow refers to the object belonging to the WS, not the user's account
 add_account_schema = {
     "type": "object",
@@ -77,6 +79,39 @@ delete_account_schema = {
     "required": ["account_uuid"]
 }
 
+# TAGS
+add_tag_schema = {
+    "type": "object",
+    "properties": {
+        "workspace_uuid": {"type": "string"},
+        "name": {"type": "string", "minLength": 1, "maxLength": 30},
+        "colour": {"type": "string", "minLength": 7, "maxLength": 7},
+    },
+    "additionalProperties": False,
+    "required": ["workspace_uuid", "name"]
+}
+
+edit_tag_schema = {
+    "type": "object",
+    "properties": {
+        "tag_uuid": {"type": "string"},
+        "name": {"type": "string", "minLength": 1, "maxLength": 30},
+        "colour": {"type": "string", "minLength": 7, "maxLength": 7},
+    },
+    "additionalProperties": False,
+    "required": ["tag_uuid", "name"]
+}
+
+delete_tag_schema = {
+    "type": "object",
+    "properties": {
+        "tag_uuid": {"type": "string"}
+    },
+    "additionalProperties": False,
+    "required": ["tag_uuid"]
+}
+
+# EXPENSE CATEGORY
 add_expense_category_schema = {
     "type": "object",
     "properties": {
@@ -110,6 +145,7 @@ delete_expense_category_schema = {
     "required": ["expense_category_uuid"]
 }
 
+# EXPENSE NUMBERING
 set_expense_numbering_format_schema = {
     "type": "object",
     "properties": {

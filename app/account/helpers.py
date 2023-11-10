@@ -115,6 +115,8 @@ def get_workspace_settings(workspace_id):
         "uuid": workspace._uuid,
         "groups": [],
         "accounts": [],
+        "accounts": [],
+        "tags": [],
         "expense_categories": [],
         "expense_numbering_settings": {
             "number_digits": workspace._expense_number_digits,
@@ -152,6 +154,17 @@ def get_workspace_settings(workspace_id):
                 "code": account._code,
             }
             ws_settings["accounts"].append(account_data)
+
+    # add workspace tags
+    the_tags = workspace.get_tags()
+    if the_tags:
+        for tag in the_tags:
+            tag_data = {
+                "uuid": tag._uuid,
+                "name": tag._name,
+                "colour": tag._colour,
+            }
+            ws_settings["tags"].append(tag_data)
     
     # add expense categories
     the_expense_categories = workspace.get_expense_categories()

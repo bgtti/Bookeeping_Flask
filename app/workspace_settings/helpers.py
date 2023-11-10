@@ -117,6 +117,28 @@ def get_all_accounts(workspace_id):
     
     return account_data
 
+def get_all_tags(workspace_id):
+    '''Requires workspace id and outputs array of all tag objects belonging to workspace.'''
+
+    workspace = Workspace.query.filter_by(id=workspace_id).first()
+
+    if not workspace:
+        return "Error: workspace could not be found."
+    
+    tags = workspace.tags
+
+    # Create a list of account data to return
+    tag_data = []
+    for tag in tags:
+        tag_info = {
+            "uuid": tag.uuid,
+            "name": tag.name,
+            "colour": tag.colour,
+        }
+        tag_data.append(tag_info)
+    
+    return tag_data
+
 def get_all_expense_categories(workspace_id):
     '''Requires workspace id and outputs array of all expence category objects belonging to workspace.'''
 

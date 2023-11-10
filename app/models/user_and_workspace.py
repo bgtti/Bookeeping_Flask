@@ -121,6 +121,7 @@ class Workspace(UserMixin, db.Model):
         'user.id', ondelete='CASCADE'))
     groups = db.relationship('Group', backref='workspace', lazy='dynamic', cascade='all, delete-orphan')
     accounts = db.relationship('Account', backref='workspace', lazy='dynamic', cascade='all, delete-orphan')
+    tags = db.relationship('Tag', backref='workspace', lazy='dynamic', cascade='all, delete-orphan')
     expense_categories = db.relationship('Expense_Category', backref='workspace', lazy='dynamic', cascade='all, delete-orphan')
     expenses = db.relationship('Expense', backref='workspace', lazy='dynamic', cascade='all, delete-orphan')
 
@@ -139,6 +140,9 @@ class Workspace(UserMixin, db.Model):
     
     def get_accounts(self):
         return self.accounts.all()
+    
+    def get_tags(self):
+        return self.tags.all()
     
     def get_expense_categories(self):
         return self.expense_categories.all()
