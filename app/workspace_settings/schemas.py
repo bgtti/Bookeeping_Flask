@@ -44,6 +44,40 @@ delete_group_schema = {
     "required": ["group_uuid"]
 }
 
+# SUBGROUPS
+add_subgroup_schema = {
+    "type": "object",
+    "properties": {
+        "group_uuid": {"type": "string"},
+        "name": {"type": "string", "minLength": 1, "maxLength": 30},
+        "description": {"type": "string", "maxLength": 100},
+        "code": {"type": "string", "maxLength": 10},
+    },
+    "additionalProperties": False,
+    "required": ["group_uuid", "name"]
+}
+
+edit_subgroup_schema = {
+    "type": "object",
+    "properties": {
+        "group_uuid": {"type": "string"},
+        "subgroup_uuid": {"type": "string"},
+        "name": {"type": "string", "minLength": 1, "maxLength": 30},
+        "description": {"type": "string", "maxLength": 100},
+        "code": {"type": "string", "maxLength": 10},
+    },
+    "additionalProperties": False,
+    "required": ["subgroup_uuid", "name"]
+}
+delete_subgroup_schema = {
+    "type": "object",
+    "properties": {
+        "subgroup_uuid": {"type": "string"}
+    },
+    "additionalProperties": False,
+    "required": ["subgroup_uuid"]
+}
+
 # ACCOUNTS
 # account bellow refers to the object belonging to the WS, not the user's account
 add_account_schema = {

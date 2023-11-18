@@ -2,28 +2,27 @@ from app.extensions import db
 from flask_login import UserMixin
 from uuid import uuid4
 
-# IN THIS FILE: Workspaces' Group DB Model
+# IN THIS FILE: Group's Subgroup DB Model
 
 # uuid generation
 def get_uuid():
     return uuid4().hex
 
-# One workspace can have many groups. A group belongs to one workspace.
-class Group(UserMixin, db.Model):
-    __tablename__ = "group"
+# One group can have many subgroups. A subgroup belongs to one group.
+class Subgroup(UserMixin, db.Model):
+    __tablename__ = "subgroup"
     id = db.Column(db.Integer, primary_key=True)
     _uuid = db.Column(db.String(32), unique=True, default=get_uuid)
     _name = db.Column(db.String(30), nullable=False)
     _description = db.Column(db.String(100), nullable=True)
     _code = db.Column(db.String(10), nullable=True)
-    _workspace_id = db.Column(db.Integer, db.ForeignKey('workspace.id'))
-    subgroups = db.relationship('Subgroup', backref='group', lazy='dynamic', cascade='all, delete-orphan')
+    _group_id = db.Column(db.Integer, db.ForeignKey('group.id'))
 
-    def __init__(self, name, description, code, workspace_id, ** kwargs):
+    def __init__(self, name, description, code, group_id, ** kwargs):
         self._name = name
         self._description = description
         self._code = code
-        self._workspace_id = workspace_id
+        self._group_id = group_id
 
     @property
     def uuid(self):
@@ -42,5 +41,5 @@ class Group(UserMixin, db.Model):
         return self._code
     
     @property
-    def  workspace_id(self):
-        return self._workspace_id
+    def  group_id(self):
+        return self._group_id

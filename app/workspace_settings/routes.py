@@ -3,15 +3,17 @@ from datetime import timedelta
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 import jsonschema
 import string
+from sqlalchemy.orm import joinedload
 # from forex_python.converter import CurrencyCodes
 from app.extensions import flask_bcrypt, db
 from app.models.user_and_workspace import User, Workspace
 from app.models.workspace_group import Group
+from app.models.workspace_subgroup import Subgroup
 from app.models.workspace_account import Account
 from app.models.workspace_tag import Tag
 from app.models.expense_category import Expense_Category
 from app.account.helpers import get_workspace_settings
-from app.workspace_settings.schemas import all_workspace_settings_schema, add_group_schema, edit_group_schema, delete_group_schema, add_account_schema, edit_account_schema, delete_account_schema, add_tag_schema, edit_tag_schema, delete_tag_schema, add_expense_category_schema, edit_expense_category_schema, delete_expense_category_schema, set_expense_numbering_format_schema
+from app.workspace_settings.schemas import all_workspace_settings_schema, add_group_schema, edit_group_schema, delete_group_schema, add_subgroup_schema, edit_subgroup_schema, delete_subgroup_schema, add_account_schema, edit_account_schema, delete_account_schema, add_tag_schema, edit_tag_schema, delete_tag_schema, add_expense_category_schema, edit_expense_category_schema, delete_expense_category_schema, set_expense_numbering_format_schema
 from app.workspace_settings.helpers import get_all_groups, get_all_accounts, get_all_tags,get_all_expense_categories, get_expense_numbering_settings
 from app.constants.constants import CONSTANTS
 
@@ -188,6 +190,154 @@ def delete_group():
     except Exception as e:
         db.session.rollback()
         return jsonify({'response': 'There was an error deleting the group', 'error': str(e)}), 500
+
+    # Get all groups belonging to the workspace after deletion
+    try:
+        group_data = get_all_groups(group.workspace.id)
+    except Exception as e:
+        return jsonify({'response': 'Group deleted, but database error prevented group data from being sent.', 'error': str(e)}), 500
+
+    return jsonify(group_data)
+
+# ********** SUBGROUPS *********
+@workspace_settings.route("/add_subgroup", methods=["POST"])
+@jwt_required()
+def add_subgroup():
+    # Get the JSON data from the request body
+    json_data = request.get_json()
+
+    # Validate the JSON data against the schema
+    try:
+        jsonschema.validate(instance=json_data, schema=add_subgroup_schema)
+    except jsonschema.exceptions.ValidationError as e:
+        return jsonify({'response': 'Invalid JSON data.', 'error': str(e)}), 400
+
+    # Validate user and token
+    current_user_email = get_jwt_identity()
+    user = User.query.filter_by(_email=current_user_email).first()
+    if not user:
+        return jsonify({'response': 'User not found'}), 404
+    
+    # Check if group exists
+    group = Group.query.filter_by(_uuid=json_data.get("group_uuid")).first()
+    if not group:
+        return jsonify({'response': 'Group not found.'}), 404
+    
+    # Check if workspace exists and user is either owner or has access to it
+    workspace = Workspace.query.filter_by(id=group.workspace_id).first()
+    if not workspace:
+        return jsonify({'response': 'Workspace not found.'}), 404
+    if workspace.owner_id != user.id or workspace.users.filter_by(id=user.id).first() is not None:
+        return jsonify({'response': 'You do not have access to this workspace.'}), 403
+
+    # Save subgroup
+    try:
+        new_subgroup = Subgroup(name=json_data["name"], description=json_data.get("description"), code=json_data.get("code"), group_id=group.id)
+        db.session.add(new_subgroup)
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'response': 'There was an error adding subgroup', 'error': str(e)}), 500
+    
+    # Get all groups belonging to this WS
+    try:
+        group_data = get_all_groups(workspace.id)
+    except Exception as e:
+        return jsonify({'response': 'Subgroup added, but database error prevented group data to be sent.', 'error': str(e)}), 500
+
+    return jsonify(group_data)
+
+@workspace_settings.route("/edit_subgroup", methods=["POST"])
+@jwt_required()
+def edit_subgroup():
+    # Get the JSON data from the request body
+    json_data = request.get_json()
+
+    # Validate the JSON data against the schema
+    try:
+        jsonschema.validate(instance=json_data, schema=edit_subgroup_schema)
+    except jsonschema.exceptions.ValidationError as e:
+        return jsonify({'response': 'Invalid JSON data.', 'error': str(e)}), 400
+
+    # Validate user and token
+    current_user_email = get_jwt_identity()
+    user = User.query.filter_by(_email=current_user_email).first()
+    if not user:
+        return jsonify({'response': 'User not found'}), 404
+    
+    # Check if subgroup and group exist and if user is either owner or has access to it
+    subgroup_uuid = json_data["subgroup_uuid"]
+    subgroup = Subgroup.query.filter_by(_uuid=subgroup_uuid).first()
+    if not subgroup:
+        return jsonify({'response': 'Subgroup not found.'}), 404
+    group = subgroup.group
+    if not group: 
+        return jsonify({'response': 'Group not found.'}), 404
+    if group.workspace.owner_id != user.id or group.workspace.users.filter_by(id=user.id).first() is not None:
+        return jsonify({'response': 'You do not have access to this workspace.'}), 403
+    
+    # Save subgroup
+    # Update subgroup information
+    try:
+        if "group_uuid" in json_data:
+            subgroup._group_id = json_data["group_uuid"]
+        if "name" in json_data:
+            subgroup._name = json_data["name"]
+        if "description" in json_data:
+            subgroup._description = json_data["description"]
+        if "code" in json_data:
+            subgroup._code = json_data["code"]
+        
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'response': 'There was an error editing the group', 'error': str(e)}), 500
+    
+    # Get all groups belonging to this WS
+    try:
+        group_data = get_all_groups(group.workspace.id)
+        
+    except Exception as e:
+        return jsonify({'response': 'Subgroup edited, but database error prevented group data to be sent.', 'error': str(e)}), 500
+
+    return jsonify(group_data)
+
+@workspace_settings.route("/delete_subgroup", methods=["DELETE"])
+@jwt_required()
+def delete_subgroup():
+    # Get the JSON data from the request body
+    json_data = request.get_json()
+
+    # Validate the JSON data against the schema
+    try:
+        jsonschema.validate(instance=json_data, schema=delete_subgroup_schema)
+    except jsonschema.exceptions.ValidationError as e:
+        return jsonify({'response': 'Invalid JSON data.', 'error': str(e)}), 400
+
+    # Validate user and token
+    current_user_email = get_jwt_identity()
+    user = User.query.filter_by(_email=current_user_email).first()
+    if not user:
+        return jsonify({'response': 'User not found'}), 404
+
+    # Check if subgroup and group exist and if user is either owner or has access to it
+    subgroup_uuid = json_data["subgroup_uuid"]
+    subgroup = Subgroup.query.filter_by(_uuid=subgroup_uuid).first()
+    if not subgroup:
+        return jsonify({'response': 'Subgroup not found.'}), 404
+    group = subgroup.group
+    if not group: 
+        return jsonify({'response': 'Group not found.'}), 404
+    if group.workspace.owner_id != user.id or group.workspace.users.filter_by(id=user.id).first() is not None:
+        return jsonify({'response': 'You do not have access to this workspace.'}), 403
+
+    try:
+        # Delete the subgroup
+        db.session.delete(subgroup)
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'response': 'There was an error deleting the subgroup', 'error': str(e)}), 500
 
     # Get all groups belonging to the workspace after deletion
     try:

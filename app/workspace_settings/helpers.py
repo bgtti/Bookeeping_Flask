@@ -1,6 +1,8 @@
 from app.models.user_and_workspace import User, Workspace
+from app.models.workspace_group import Group
 # from app.models.invite import Invite, INVITE_TYPES
 from app.extensions import db
+from sqlalchemy.orm import joinedload
 # from app.constants.currency_list import currency_list
 # def get_all_workspace_settings(workspace_id):
 #     '''Requires workspace id and outputs all workspace settings as a dictionary of objects.'''
@@ -70,16 +72,48 @@ from app.extensions import db
     
 #     return all_workspace_settings
 
+# def get_all_groups(workspace_id):
+#     '''Requires workspace id and outputs array of all group objects belonging to workspace, including subgroups.'''
+
+#     workspace = Workspace.query.filter_by(id=workspace_id).first()
+
+#     if not workspace:
+#         return "Error: workspace could not be found."
+
+#     # Use a single query to fetch both groups and their subgroups
+#     groups = Group.query.filter_by(workspace_id=workspace_id).options(joinedload(Group.subgroups)).all()
+
+#     # Create a list of group data to return
+#     group_data = []
+#     for group in groups:
+#         group_info = {
+#             "uuid": group.uuid,
+#             "name": group.name,
+#             "description": group.description,
+#             "code": group.code,
+#             "subgroups": []  # Initialize an empty list for subgroups
+#         }
+
+#         # Populate subgroup data
+#         for subgroup in group.subgroups:
+#             subgroup_info = {
+#                 "uuid": subgroup.uuid,
+#                 "name": subgroup.name,
+#                 "description": subgroup.description,
+#                 "code": subgroup.code
+#             }
+#             group_info["subgroups"].append(subgroup_info)
+
+#         group_data.append(group_info)
+
+#     return group_data
+
 def get_all_groups(workspace_id):
-    '''Requires workspace id and outputs array of all group objects belonging to workspace.'''
-
+    '''Requires workspace id and outputs array of all group objects belonging to workspace, including subgroups.'''
     workspace = Workspace.query.filter_by(id=workspace_id).first()
-
-    if not workspace:
-        return "Error: workspace could not be found."
-    
     groups = workspace.groups
-
+    if not groups:
+        return "Error: workspace could not be found."
     # Create a list of group data to return
     group_data = []
     for group in groups:
@@ -88,9 +122,21 @@ def get_all_groups(workspace_id):
             "name": group.name,
             "description": group.description,
             "code": group.code,
+            "subgroups": [] 
         }
+
+        # Populate subgroup data
+        for subgroup in group.subgroups:
+            subgroup_info = {
+                "uuid": subgroup.uuid,
+                "name": subgroup.name,
+                "description": subgroup.description,
+                "code": subgroup.code
+            }
+            group_info["subgroups"].append(subgroup_info)
+
         group_data.append(group_info)
-    
+
     return group_data
 
 # "accounts" bellow refer to the objects belonging to the workspace, not the user's accounts
@@ -127,7 +173,7 @@ def get_all_tags(workspace_id):
     
     tags = workspace.tags
 
-    # Create a list of account data to return
+    # Create a list of tag data to return
     tag_data = []
     for tag in tags:
         tag_info = {

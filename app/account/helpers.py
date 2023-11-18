@@ -140,7 +140,17 @@ def get_workspace_settings(workspace_id):
                 "name": group._name,
                 "description": group._description,
                 "code": group._code,
+                "subgroups": [] 
             }
+            # Populate subgroup data
+            for subgroup in group.subgroups:
+                subgroup_info = {
+                    "uuid": subgroup.uuid,
+                    "name": subgroup.name,
+                    "description": subgroup.description,
+                    "code": subgroup.code
+                }
+                group_data["subgroups"].append(subgroup_info)
             ws_settings["groups"].append(group_data)
 
     # add workspace accounts
