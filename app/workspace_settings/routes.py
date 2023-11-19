@@ -280,7 +280,9 @@ def edit_subgroup():
     # Update subgroup information
     try:
         if "group_uuid" in json_data:
-            subgroup._group_id = json_data["group_uuid"]
+            group = Group.query.filter_by(_uuid=json_data["group_uuid"]).first()
+            if group.id != subgroup._group_id:
+                subgroup._group_id = group.id
         if "name" in json_data:
             subgroup._name = json_data["name"]
         if "description" in json_data:
